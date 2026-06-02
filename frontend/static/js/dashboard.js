@@ -307,6 +307,7 @@ async function enviarFormulario(e, tipo) {
             capacidad: parseInt(document.getElementById('m-cap').value), 
             ubicacion: document.getElementById('m-ub').value 
         };
+        endpoint = `${API_URL}/salones`;
     } else if (tipo === 'editar_salon') {
         const salonId = document.getElementById('m-id-edit').value;
         data = { 
