@@ -41,7 +41,7 @@ class DocenteService:
                 correccion = dominio_completo.replace(dominio_base, typos_base[dominio_base], 1)
                 return {"status": "error", "message": f"Dominio de correo inválido. ¿Quisiste escribir @{correccion}?"}
             
-            if dominio_completo.endswith('.con') or dominio_completo.endswith('.c'):
+            if dominio_completo.endswith(('.con', '.c', '.om', '.o')):
                 correccion = dominio_completo.rsplit('.', 1)[0] + '.com'
                 return {"status": "error", "message": f"Dominio de correo inválido. ¿Quisiste escribir @{correccion}?"}
                 
