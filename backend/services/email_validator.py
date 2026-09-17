@@ -1,5 +1,4 @@
 def validar_dominio_email(email):
-    """SRP: una sola regla de dominio, reutilizada por usuarios y docentes."""
     email = (email or "").lower()
     if "@" not in email:
         return None

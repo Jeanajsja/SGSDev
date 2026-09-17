@@ -3,7 +3,6 @@ from interfaces.password_hasher import IPasswordHasher
 
 
 class WerkzeugPasswordHasher(IPasswordHasher):
-    """LSP: sustituye a IPasswordHasher. OCP: se puede cambiar por bcrypt sin tocar servicios."""
 
     def hash(self, password: str) -> str:
         return generate_password_hash(password)

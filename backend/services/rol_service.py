@@ -1,4 +1,5 @@
 from interfaces.rol_repository import IRolRepository
+from models.rol import Rol
 
 
 class RolService:
@@ -6,4 +7,4 @@ class RolService:
         self._repository = repository
 
     def listar(self):
-        return self._repository.listar()
+        return [Rol.from_row(row).to_dict() for row in self._repository.listar()]

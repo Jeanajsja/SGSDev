@@ -1,10 +1,10 @@
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.usuario_repository import IUsuarioRepository
+from models.usuario import Usuario
 from services.email_validator import validar_dominio_email
 
 
 class UsuarioService:
-    """SRP: registro y login. DIP: repositorio + hasher inyectados."""
 
     def __init__(self, repository: IUsuarioRepository, password_hasher: IPasswordHasher):
         self._repository = repository
@@ -32,7 +32,5 @@ class UsuarioService:
             return {"status": "error", "message": f"Error en el servidor: {str(e)}"}
 
         if user and self._password_hasher.verificar(password, user["password"]):
-            user_clean = dict(user)
-            user_clean.pop("password", None)
-            return {"status": "ok", "user": user_clean}
+            return {"status": "ok", "user": Usuario.from_row(user).to_public_dict()}
         return {"status": "error", "message": "Credenciales inválidas"}

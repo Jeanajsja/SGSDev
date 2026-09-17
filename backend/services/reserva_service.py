@@ -3,7 +3,6 @@ from interfaces.reserva_repository import IReservaRepository
 
 
 class ReservaService:
-    """SRP: reglas de cruce, cola y duración. DIP: persistencia inyectada."""
 
     def __init__(self, repository: IReservaRepository):
         self._repository = repository

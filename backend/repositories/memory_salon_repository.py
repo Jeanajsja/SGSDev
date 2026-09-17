@@ -2,7 +2,6 @@ from interfaces.salon_repository import ISalonRepository
 
 
 class MemorySalonRepository(ISalonRepository):
-    """LSP: misma interfaz que Postgres, para pruebas sin base de datos."""
 
     def __init__(self):
         self._salones = []

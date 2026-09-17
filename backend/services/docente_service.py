@@ -1,5 +1,6 @@
 from interfaces.docente_repository import IDocenteRepository
 from interfaces.password_hasher import IPasswordHasher
+from models.docente import Docente
 from services.email_validator import validar_dominio_email
 
 
@@ -9,7 +10,7 @@ class DocenteService:
         self._password_hasher = password_hasher
 
     def listar(self):
-        return self._repository.listar()
+        return [Docente.from_row(row).to_dict() for row in self._repository.listar()]
 
     def crear(self, data):
         error = validar_dominio_email(data.get("correo", ""))

@@ -8,7 +8,6 @@ from interfaces.password_hasher import IPasswordHasher
 
 
 class FakeHasher(IPasswordHasher):
-    """LSP: hasher de prueba que sustituye a Werkzeug."""
 
     def hash(self, password: str) -> str:
         return f"hash:{password}"

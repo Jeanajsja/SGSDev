@@ -1,14 +1,14 @@
 from interfaces.salon_repository import ISalonRepository
+from models.salon import Salon
 
 
 class SalonService:
-    """SRP: reglas de negocio de salones. DIP: depende de ISalonRepository."""
 
     def __init__(self, repository: ISalonRepository):
         self._repository = repository
 
     def listar(self):
-        return self._repository.listar()
+        return [Salon.from_row(row).to_dict() for row in self._repository.listar()]
 
     def crear(self, data):
         error = self._validar(data)

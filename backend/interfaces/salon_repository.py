@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 
 
 class ISalonRepository(ABC):
-    """ISP: solo operaciones de salones."""
 
     @abstractmethod
     def listar(self):
