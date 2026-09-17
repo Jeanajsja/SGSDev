@@ -63,7 +63,7 @@
                     sessionStorage.setItem('user', JSON.stringify(result.user));
                     window.location.href = 'index.html';
                 } else {
-                    alert("Error: " + result.message);
+                    alert("Error: " + (result.message || result.detail || "no se pudo iniciar sesion"));
                 }
             } catch (err) {
                 alert("Fallo de red: El servidor Python está apagado.");
