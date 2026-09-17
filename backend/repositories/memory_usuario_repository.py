@@ -1,7 +1,8 @@
+from interfaces.login_repository import ILoginRepository
 from interfaces.usuario_repository import IUsuarioRepository
 
 
-class MemoryUsuarioRepository(IUsuarioRepository):
+class MemoryUsuarioRepository(IUsuarioRepository, ILoginRepository):
     def __init__(self):
         self._usuarios = []
         self._next_id = 1

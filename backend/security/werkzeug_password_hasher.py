@@ -1,9 +1,9 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 from interfaces.password_hasher import IPasswordHasher
+from interfaces.password_verifier import IPasswordVerifier
 
 
-class WerkzeugPasswordHasher(IPasswordHasher):
-
+class WerkzeugPasswordHasher(IPasswordHasher, IPasswordVerifier):
     def hash(self, password: str) -> str:
         return generate_password_hash(password)
 

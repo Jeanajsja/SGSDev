@@ -1,6 +1,6 @@
-class Operador:
+from models.usuario import Usuario
 
-    def __init__(self, id_interno=None, nombre=None, correo=None):
-        self.id_interno = id_interno
-        self.nombre = nombre
-        self.correo = correo
+
+class Operador(Usuario):
+    def etiqueta(self):
+        return f"Operador {self.nombre}"

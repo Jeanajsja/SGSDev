@@ -1,8 +1,9 @@
 from psycopg2.extras import RealDictCursor
+from interfaces.login_repository import ILoginRepository
 from interfaces.usuario_repository import IUsuarioRepository
 
 
-class PostgresUsuarioRepository(IUsuarioRepository):
+class PostgresUsuarioRepository(IUsuarioRepository, ILoginRepository):
     def __init__(self, connection_factory):
         self._connection_factory = connection_factory
 

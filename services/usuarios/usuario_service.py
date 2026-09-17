@@ -1,15 +1,16 @@
+from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.usuario_repository import IUsuarioRepository
-from email_validator import validar_dominio_email
 
 
 class UsuarioService:
-    def __init__(self, repository: IUsuarioRepository, password_hasher: IPasswordHasher):
+    def __init__(self, repository: IUsuarioRepository, password_hasher: IPasswordHasher, email_validator: IEmailValidator):
         self._repository = repository
         self._password_hasher = password_hasher
+        self._email_validator = email_validator
 
     def crear_usuario(self, data):
-        error = validar_dominio_email(data.get("email", ""))
+        error = self._email_validator.validar(data.get("email", ""))
         if error:
             return error
         try:

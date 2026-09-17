@@ -25,3 +25,6 @@ class Usuario:
             "email": self.email,
             "id_rol": self.id_rol,
         }
+
+    def etiqueta(self):
+        return self.nombre

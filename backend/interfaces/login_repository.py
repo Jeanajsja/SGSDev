@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class IPasswordHasher(ABC):
+class ILoginRepository(ABC):
     @abstractmethod
-    def hash(self, password: str) -> str:
+    def buscar_por_email(self, email):
         pass

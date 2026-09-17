@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from db_config import get_connection
+from dominio_email_validator import DominioEmailValidator
 from repositories.postgres_usuario_repository import PostgresUsuarioRepository
 from security.werkzeug_password_hasher import WerkzeugPasswordHasher
 from usuario_controller import crear_router
@@ -10,7 +11,11 @@ from usuario_service import UsuarioService
 
 def create_app(service=None):
     if service is None:
-        service = UsuarioService(PostgresUsuarioRepository(get_connection), WerkzeugPasswordHasher())
+        service = UsuarioService(
+            PostgresUsuarioRepository(get_connection),
+            WerkzeugPasswordHasher(),
+            DominioEmailValidator(),
+        )
     app = FastAPI(title="ms-usuarios")
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
