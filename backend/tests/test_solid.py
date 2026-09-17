@@ -8,7 +8,7 @@ from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.password_verifier import IPasswordVerifier
 from models.administrador import Administrador
-from models.operador import Operador
+from models.superadministrador import Superadministrador
 from models.usuario import Usuario
 from models.usuario_factory import usuario_desde_fila
 from repositories.memory_docente_repository import MemoryDocenteRepository
@@ -68,19 +68,19 @@ class TestO_AbiertoCerrado(unittest.TestCase):
 
 
 class TestL_Sustitucion(unittest.TestCase):
-    def test_admin_y_operador_se_usan_como_usuario(self):
-        fila_admin = {"id_usuario": 1, "nombre": "Luisa", "email": "a@ucatolica.edu.co", "id_rol": 1}
-        fila_op = {"id_usuario": 2, "nombre": "Juan", "email": "j@ucatolica.edu.co", "id_rol": 2}
+    def test_superadmin_y_admin_se_usan_como_usuario(self):
+        fila_super = {"id_usuario": 1, "nombre": "Luisa", "email": "a@ucatolica.edu.co", "id_rol": 1}
+        fila_admin = {"id_usuario": 2, "nombre": "Juan", "email": "j@ucatolica.edu.co", "id_rol": 2}
+        superadmin = usuario_desde_fila(fila_super)
         admin = usuario_desde_fila(fila_admin)
-        operador = usuario_desde_fila(fila_op)
+        self.assertIsInstance(superadmin, Superadministrador)
         self.assertIsInstance(admin, Administrador)
-        self.assertIsInstance(operador, Operador)
+        self.assertIsInstance(superadmin, Usuario)
         self.assertIsInstance(admin, Usuario)
-        self.assertIsInstance(operador, Usuario)
-        self.assertEqual(admin.to_public_dict()["nombre"], "Luisa")
-        self.assertEqual(operador.to_public_dict()["nombre"], "Juan")
+        self.assertEqual(superadmin.to_public_dict()["nombre"], "Luisa")
+        self.assertEqual(admin.to_public_dict()["nombre"], "Juan")
+        self.assertIn("Superadministrador", superadmin.etiqueta())
         self.assertIn("Administrador", admin.etiqueta())
-        self.assertIn("Operador", operador.etiqueta())
 
     def test_memory_repo_reemplaza_postgres_en_login(self):
         repo = MemoryUsuarioRepository()

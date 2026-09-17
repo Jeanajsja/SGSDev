@@ -7,17 +7,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!user) { window.location.href = 'login.html'; return; }
 
     document.getElementById('user-display-name').innerText = user.nombre;
-    const rolesMap = { 1: 'ADMINISTRADOR', 2: 'OPERATIVO', 3: 'DOCENTE' };
+    const rolesMap = { 1: 'SUPERADMINISTRADOR', 2: 'ADMINISTRADOR', 3: 'DOCENTE' };
     document.getElementById('user-display-role').innerText = rolesMap[user.id_rol];
 
-    // --- TRANSFORMACIÓN DE INTERFAZ (RBAC) ---
     const rol = parseInt(user.id_rol);
-    if (rol === 3) { // DOCENTE: No ve Docentes, Reservas Globales ni Roles
+    if (rol === 3) {
         ['nav-docentes', 'nav-reservas', 'nav-roles'].forEach(id => {
             const el = document.getElementById(id); if(el) el.style.display = 'none';
         });
         document.getElementById('seccion-grafico').style.display = 'none';
-    } else if (rol === 2) { // OPERATIVO: No ve Control de Roles
+    } else if (rol === 2) {
         const el = document.getElementById('nav-roles'); if(el) el.style.display = 'none';
     }
 
@@ -48,7 +47,7 @@ async function mostrarSeccion(seccion) {
         tit.innerText = "Gestión de Salones";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR SALÓN';
         btn.onclick = () => prepararModal('salon');
-        if (user.id_rol != 1) btn.style.display = 'none'; // US-05: Solo admin puede registrar
+        if (user.id_rol != 1) btn.style.display = 'none';
         await cargarTabla('salones');
     } else if (seccion === 'reservas_globales') {
         tit.innerText = "Reservas Globales";
@@ -58,7 +57,7 @@ async function mostrarSeccion(seccion) {
         tit.innerText = "Listado de Docentes";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR DOCENTE';
         btn.onclick = () => prepararModal('docente');
-        if (user.id_rol != 1) btn.style.display = 'none'; // US-13: Solo admin
+        if (user.id_rol != 1) btn.style.display = 'none';
         await cargarTabla('docentes');
     } else if (seccion === 'roles') {
         tit.innerText = "Control de Roles";
@@ -99,7 +98,6 @@ async function cargarTabla(tipo) {
                     const h_ini = r.hora_inicio ? r.hora_inicio.substring(0,5) : '--:--';
                     const h_fin = r.hora_fin ? r.hora_fin.substring(0,5) : '--:--';
                     
-                    // Botón editar condicional (Administrador o Administrativo)
                     const canEdit = user.id_rol == 1 || user.id_rol == 2;
                     const btnEditar = canEdit ? `<button onclick="editarReserva(${r.id_reserva}, '${r.fecha}', '${h_ini}', '${h_fin}', ${r.id_salon}, ${r.id_docente})" class="text-ucc-azul font-bold hover:underline mr-4"><i class="fas fa-edit"></i></button>` : '';
 
