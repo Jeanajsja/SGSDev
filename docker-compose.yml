@@ -10,6 +10,7 @@ services:
       - salones
       - docentes
       - roles
+      - usuarios
     restart: on-failure
 
   monolito:
@@ -41,3 +42,9 @@ services:
     container_name: sgsdev-ms-roles
     ports:
       - "5004:5004"
+
+  usuarios:
+    build: ./services/usuarios
+    container_name: sgsdev-ms-usuarios
+    ports:
+      - "5005:5005"
