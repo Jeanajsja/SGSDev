@@ -101,14 +101,14 @@ async function cargarTabla(tipo) {
                     
                     // Botón editar condicional (Administrador o Administrativo)
                     const canEdit = user.id_rol == 1 || user.id_rol == 2;
-                    const btnEditar = canEdit ? `<button onclick="editarReserva(${r.id_reserva}, '${r.fecha}', '${h_ini}', '${h_fin}', ${r.id_salon}, ${r.id_docente})" class="text-blue-600 font-bold hover:underline mr-4"><i class="fas fa-edit"></i></button>` : '';
+                    const btnEditar = canEdit ? `<button onclick="editarReserva(${r.id_reserva}, '${r.fecha}', '${h_ini}', '${h_fin}', ${r.id_salon}, ${r.id_docente})" class="text-ucc-azul font-bold hover:underline mr-4"><i class="fas fa-edit"></i></button>` : '';
 
                     body.innerHTML += `
                         <tr class="border-b hover:bg-slate-50/50 transition">
                             <td class="px-6 py-4 font-bold text-slate-700">${r.docente}</td>
                             <td class="px-6 py-4 text-slate-600">${r.salon}</td>
                             <td class="px-6 py-4 text-slate-600">${r.fecha}</td>
-                            <td class="px-6 py-4 text-slate-600"><span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-bold">${h_ini} - ${h_fin}</span></td>
+                            <td class="px-6 py-4 text-slate-600"><span class="bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold">${h_ini} - ${h_fin}</span></td>
                             <td class="px-6 py-4">
                                 ${btnEditar}
                                 <button onclick="cancelarReserva(${r.id_reserva})" class="text-red-500 font-bold hover:underline"><i class="fas fa-trash-alt"></i> Cancelar</button>
@@ -126,14 +126,14 @@ async function cargarTabla(tipo) {
                 body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-slate-400 italic'>No hay salones registrados</td></tr>";
             } else {
                 result.data.forEach(s => {
-                    const badgeColor = s.estado === 'disponible' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700';
+                    const badgeColor = s.estado === 'disponible' ? 'bg-ucc-plata text-ucc-azul' : 'bg-[#fdf6de] text-[#8a6a05]';
                     body.innerHTML += `
                         <tr class="border-b hover:bg-slate-50/50 transition">
                             <td class="px-6 py-4 font-bold text-slate-700">${s.nombre}</td>
                             <td class="px-6 py-4 text-slate-600">${s.capacidad} personas</td>
                             <td class="px-6 py-4 text-slate-600">${s.ubicacion}</td>
                             <td class="px-6 py-4"><span class="${badgeColor} px-2.5 py-1 rounded-lg text-xs font-bold uppercase">${s.estado}</span></td>
-                            <td class="px-6 py-4">${user.id_rol == 1 ? `<button onclick="editarSalon(${s.id_salon}, '${s.nombre}', ${s.capacidad}, '${s.ubicacion}')" class="text-blue-600 font-bold hover:underline"><i class="fas fa-edit"></i> Editar</button>` : '-'}</td>
+                            <td class="px-6 py-4">${user.id_rol == 1 ? `<button onclick="editarSalon(${s.id_salon}, '${s.nombre}', ${s.capacidad}, '${s.ubicacion}')" class="text-ucc-azul font-bold hover:underline"><i class="fas fa-edit"></i> Editar</button>` : '-'}</td>
                         </tr>`;
                 });
             }
@@ -150,7 +150,7 @@ async function cargarTabla(tipo) {
                             <td class="px-6 py-4 text-slate-500 font-mono">#${d.id_docente}</td>
                             <td class="px-6 py-4 font-bold text-slate-700">${d.nombre}</td>
                             <td class="px-6 py-4 text-slate-600">${d.correo}</td>
-                            <td class="px-6 py-4"><span class="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-xs font-bold uppercase">Docente</span></td>
+                            <td class="px-6 py-4"><span class="bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold uppercase">Docente</span></td>
                         </tr>`;
                 });
             }
@@ -166,7 +166,7 @@ async function cargarTabla(tipo) {
                         <tr class="border-b hover:bg-slate-50/50 transition">
                             <td class="px-6 py-4 text-slate-500 font-mono">#${r.id_rol}</td>
                             <td class="px-6 py-4 font-bold text-slate-700">${r.nombre}</td>
-                            <td class="px-6 py-4 text-green-600"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Activo</span></td>
+                            <td class="px-6 py-4 text-ucc-azul"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-ucc-dorado rounded-full"></span> Activo</span></td>
                         </tr>`;
                 });
             }
@@ -187,26 +187,26 @@ function prepararModal(tipo, editData = null) {
             ${editData ? `<input type="hidden" id="m-reserva-id" value="${editData.id_reserva}">` : ''}
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Fecha</label>
-                <input type="date" id="m-fecha" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required value="${editData ? editData.fecha : ''}">
+                <input type="date" id="m-fecha" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.fecha : ''}">
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-400 uppercase">Hora Inicio</label>
-                    <input type="time" id="m-inicio" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required value="${editData ? editData.hora_inicio : ''}">
+                    <input type="time" id="m-inicio" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.hora_inicio : ''}">
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-400 uppercase">Hora Fin</label>
-                    <input type="time" id="m-fin" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required value="${editData ? editData.hora_fin : ''}">
+                    <input type="time" id="m-fin" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.hora_fin : ''}">
                 </div>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">ID del Salón</label>
-                <input type="number" id="m-salon" placeholder="ID del Salón" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required value="${editData ? editData.id_salon : ''}">
+                <input type="number" id="m-salon" placeholder="ID del Salón" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.id_salon : ''}">
             </div>
             ${user.id_rol != 3 ? `
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">ID del Docente</label>
-                <input type="number" id="m-docente" placeholder="ID del Docente" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required value="${editData ? editData.id_docente : ''}">
+                <input type="number" id="m-docente" placeholder="ID del Docente" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.id_docente : ''}">
             </div>
             ` : ''}
         `;
@@ -217,15 +217,15 @@ function prepararModal(tipo, editData = null) {
         campos.innerHTML = `
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Nombre</label>
-                <input type="text" id="m-nom" placeholder="Ej: Laboratorio 402" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                <input type="text" id="m-nom" placeholder="Ej: Laboratorio 402" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Capacidad</label>
-                <input type="number" id="m-cap" placeholder="Ej: 40" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                <input type="number" id="m-cap" placeholder="Ej: 40" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Ubicación</label>
-                <input type="text" id="m-ub" placeholder="Ej: Torre B - Piso 4" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                <input type="text" id="m-ub" placeholder="Ej: Torre B - Piso 4" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
         `;
         document.getElementById('modalMaestro').classList.remove('hidden');
@@ -235,11 +235,11 @@ function prepararModal(tipo, editData = null) {
         campos.innerHTML = `
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Nombre Completo</label>
-                <input type="text" id="m-nom-doc" placeholder="Ej: Ing. María Pérez" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                <input type="text" id="m-nom-doc" placeholder="Ej: Ing. María Pérez" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Correo Institucional</label>
-                <input type="email" id="m-corr-doc" placeholder="maria.perez@ucatolica.edu.co" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+                <input type="email" id="m-corr-doc" placeholder="maria.perez@ucatolica.edu.co" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
         `;
         document.getElementById('modalMaestro').classList.remove('hidden');
@@ -254,15 +254,15 @@ function editarSalon(id, nombre, capacidad, ubicacion) {
         <input type="hidden" id="m-id-edit" value="${id}">
         <div class="space-y-1">
             <label class="text-xs font-bold text-slate-400 uppercase">Nombre</label>
-            <input type="text" id="m-nom-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" value="${nombre}" required>
+            <input type="text" id="m-nom-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" value="${nombre}" required>
         </div>
         <div class="space-y-1">
             <label class="text-xs font-bold text-slate-400 uppercase">Capacidad</label>
-            <input type="number" id="m-cap-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" value="${capacidad}" required>
+            <input type="number" id="m-cap-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" value="${capacidad}" required>
         </div>
         <div class="space-y-1">
             <label class="text-xs font-bold text-slate-400 uppercase">Ubicación</label>
-            <input type="text" id="m-ub-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition" value="${ubicacion}" required>
+            <input type="text" id="m-ub-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" value="${ubicacion}" required>
         </div>
     `;
     document.getElementById('modalMaestro').classList.remove('hidden');
@@ -397,8 +397,8 @@ async function initChart() {
                 datasets: [{
                     label: 'Reservas Activas por Salón',
                     data: data,
-                    backgroundColor: 'rgba(37, 99, 235, 0.65)',
-                    borderColor: 'rgba(37, 99, 235, 1)',
+                    backgroundColor: 'rgba(14, 74, 138, 0.75)',
+                    borderColor: '#edb309',
                     borderWidth: 2,
                     borderRadius: 12,
                     barPercentage: 0.5,
@@ -410,8 +410,8 @@ async function initChart() {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleColor: '#fff',
+                        backgroundColor: '#071833',
+                        titleColor: '#edb309',
                         bodyColor: '#fff',
                         padding: 12,
                         cornerRadius: 8,
@@ -420,13 +420,13 @@ async function initChart() {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#94a3b8', font: { weight: 'bold' } }
+                        ticks: { color: '#5c6b80', font: { weight: 'bold' } }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#f1f5f9' },
+                        grid: { color: '#e8eef6' },
                         ticks: { 
-                            color: '#94a3b8', 
+                            color: '#5c6b80', 
                             stepSize: 1,
                             font: { weight: 'bold' }
                         }
