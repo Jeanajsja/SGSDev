@@ -1,9 +1,11 @@
-from flask import Blueprint, jsonify
+from fastapi import APIRouter
+from fastapi.encoders import jsonable_encoder
 from services.rol_service import RolService
 
-rol_bp = Blueprint('rol', __name__)
+router = APIRouter(prefix="/api", tags=["roles"])
 service = RolService()
 
-@rol_bp.route('/roles', methods=['GET'])
+
+@router.get("/roles")
 def get_roles():
-    return jsonify(service.listar())
+    return jsonable_encoder(service.listar())

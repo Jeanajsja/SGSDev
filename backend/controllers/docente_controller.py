@@ -1,14 +1,17 @@
-from flask import Blueprint, request, jsonify
+from fastapi import APIRouter
+from fastapi.encoders import jsonable_encoder
+from schemas import DocenteCreate
 from services.docente_service import DocenteService
 
-docente_bp = Blueprint('docente', __name__)
+router = APIRouter(prefix="/api", tags=["docentes"])
 service = DocenteService()
 
-@docente_bp.route('/docentes', methods=['GET'])
-def listar():
-    data = service.listar()
-    return jsonify({"status": "ok", "data": data})
 
-@docente_bp.route('/docentes', methods=['POST'])
-def crear():
-    return jsonify(service.crear(request.json))
+@router.get("/docentes")
+def listar():
+    return {"status": "ok", "data": jsonable_encoder(service.listar())}
+
+
+@router.post("/docentes")
+def crear(payload: DocenteCreate):
+    return service.crear(payload.model_dump())
