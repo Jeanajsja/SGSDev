@@ -42,22 +42,22 @@ class TestSalonService(unittest.TestCase):
 
 class TestUsuarioService(unittest.TestCase):
     def setUp(self):
-        self.service = UsuarioService(MemoryUsuarioRepository(), FakeHasher())
+        self.repo = MemoryUsuarioRepository()
+        self.service = UsuarioService(self.repo, FakeHasher())
 
-    def test_login_ok(self):
-        self.service.crear_usuario(
+    def test_crear_usuario(self):
+        res = self.service.crear_usuario(
             {"nombre": "Ana", "email": "ana@gmail.com", "password": "123", "id_rol": 1}
         )
-        res = self.service.login("ana@gmail.com", "123")
         self.assertEqual(res["status"], "ok")
-        self.assertNotIn("password", res["user"])
+        self.assertIsNotNone(self.repo.buscar_por_email("ana@gmail.com"))
 
-    def test_email_invalido_no_toca_repositorio(self):
+    def test_email_invalido_no_guarda(self):
         res = self.service.crear_usuario(
             {"nombre": "Ana", "email": "ana@gmal.com", "password": "123", "id_rol": 1}
         )
         self.assertEqual(res["status"], "error")
-        self.assertIsNone(self.service.login("ana@gmal.com", "123").get("user"))
+        self.assertIsNone(self.repo.buscar_por_email("ana@gmal.com"))
 
 
 if __name__ == "__main__":

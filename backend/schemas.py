@@ -2,11 +2,6 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
 class UsuarioCreate(BaseModel):
     nombre: str
     email: str

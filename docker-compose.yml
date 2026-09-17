@@ -1,0 +1,22 @@
+services:
+  gateway:
+    build: ./gateway
+    container_name: sgsdev-gateway
+    ports:
+      - "8080:80"
+    depends_on:
+      - monolito
+      - login
+    restart: on-failure
+
+  monolito:
+    build: .
+    container_name: sgsdev-monolito
+    ports:
+      - "5000:5000"
+
+  login:
+    build: ./services/login
+    container_name: sgsdev-ms-login
+    ports:
+      - "5001:5001"
