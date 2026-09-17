@@ -18,35 +18,38 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend/templates"))
 STATIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend/static"))
 
-app = FastAPI(title="SGSDev", description="Sistema de Gestión de Salones")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def create_app() -> FastAPI:
+    """Composition root HTTP: ensambla routers. Las implementaciones se inyectan con Depends."""
+    application = FastAPI(title="SGSDev", description="Sistema de Gestión de Salones")
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    application.include_router(usuario_router)
+    application.include_router(reserva_router)
+    application.include_router(salon_router)
+    application.include_router(docente_router)
+    application.include_router(rol_router)
 
-app.include_router(usuario_router)
-app.include_router(reserva_router)
-app.include_router(salon_router)
-app.include_router(docente_router)
-app.include_router(rol_router)
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    @application.get("/", response_class=HTMLResponse)
+    @application.get("/login.html", response_class=HTMLResponse)
+    def login_page(request: Request):
+        return templates.TemplateResponse("login.html", {"request": request})
+
+    @application.get("/index.html", response_class=HTMLResponse)
+    def index_page(request: Request):
+        return templates.TemplateResponse("index.html", {"request": request})
+
+    return application
 
 
-@app.get("/", response_class=HTMLResponse)
-@app.get("/login.html", response_class=HTMLResponse)
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-
-@app.get("/index.html", response_class=HTMLResponse)
-def index_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
+app = create_app()
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,15 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from dependencies import get_usuario_service
 from schemas import LoginRequest, UsuarioCreate
 from services.usuario_service import UsuarioService
 
 router = APIRouter(prefix="/api", tags=["usuarios"])
-service = UsuarioService()
 
 
 @router.post("/login")
-def login(payload: LoginRequest):
+def login(payload: LoginRequest, service: UsuarioService = Depends(get_usuario_service)):
     res = service.login(payload.email, payload.password)
     if res and res.get("status") == "ok":
         return jsonable_encoder(res)
@@ -17,7 +17,7 @@ def login(payload: LoginRequest):
 
 
 @router.post("/usuarios")
-def registrar(payload: UsuarioCreate):
+def registrar(payload: UsuarioCreate, service: UsuarioService = Depends(get_usuario_service)):
     res = service.crear_usuario(payload.model_dump())
     if res and res.get("status") == "ok":
         return res
