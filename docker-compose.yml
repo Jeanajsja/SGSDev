@@ -11,6 +11,7 @@ services:
       - docentes
       - roles
       - usuarios
+      - reservas
     restart: on-failure
 
   monolito:
@@ -48,3 +49,9 @@ services:
     container_name: sgsdev-ms-usuarios
     ports:
       - "5005:5005"
+
+  reservas:
+    build: ./services/reservas
+    container_name: sgsdev-ms-reservas
+    ports:
+      - "5006:5006"
