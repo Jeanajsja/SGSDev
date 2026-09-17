@@ -12,4 +12,4 @@ COPY wsgi.py .
 ENV PYTHONUNBUFFERED=1
 EXPOSE 5000
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5000", "wsgi:app"]
+CMD gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-5000} wsgi:app
