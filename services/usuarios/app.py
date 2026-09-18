@@ -5,11 +5,13 @@ from db_config import get_connection
 from dominio_email_validator import DominioEmailValidator
 from repositories.postgres_usuario_repository import PostgresUsuarioRepository
 from security.werkzeug_password_hasher import WerkzeugPasswordHasher
+from seed_superadmin import asegurar_superadmin
 from usuario_controller import crear_router
 from usuario_service import UsuarioService
 
 
 def create_app(service=None):
+    asegurar_superadmin(get_connection)
     if service is None:
         service = UsuarioService(
             PostgresUsuarioRepository(get_connection),

@@ -12,6 +12,7 @@ class UsuarioCreate(BaseModel):
     email: str
     password: str
     id_rol: int
+    solicitante_email: Optional[str] = None
 
 
 class SalonPayload(BaseModel):

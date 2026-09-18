@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!user) { window.location.href = 'login.html'; return; }
 
     document.getElementById('user-display-name').innerText = user.nombre;
-    const rolesMap = { 1: 'ADMINISTRADOR', 2: 'OPERATIVO', 3: 'DOCENTE' };
+    const rolesMap = { 1: 'SUPERADMINISTRADOR', 2: 'ADMINISTRADOR', 3: 'DOCENTE' };
     document.getElementById('user-display-role').innerText = rolesMap[user.id_rol];
 
     // --- TRANSFORMACIÓN DE INTERFAZ (RBAC) ---
@@ -62,7 +62,13 @@ async function mostrarSeccion(seccion) {
         await cargarTabla('docentes');
     } else if (seccion === 'roles') {
         tit.innerText = "Control de Roles";
-        btn.style.display = 'none';
+        if (esSuperadminAncla(user)) {
+            btn.style.display = 'flex';
+            btn.innerHTML = '<i class="fas fa-plus"></i> NUEVO SUPERADMINISTRADOR';
+            btn.onclick = () => prepararModal('superadmin');
+        } else {
+            btn.style.display = 'none';
+        }
         await cargarTabla('roles');
     }
 }
@@ -77,6 +83,9 @@ async function cargarTabla(tipo) {
         let fetchUrl = `${API_URL}/${tipo}`;
         if (tipo === 'reservas_globales') {
             fetchUrl = `${API_URL}/reservas`;
+        }
+        if (tipo === 'roles') {
+            fetchUrl = `${API_URL}/usuarios`;
         }
         
         const res = await fetch(fetchUrl);
@@ -155,18 +164,31 @@ async function cargarTabla(tipo) {
                 });
             }
         } else if (tipo === 'roles') {
-            head.innerHTML = '<tr><th class="px-6 py-4">ID Rol</th><th class="px-6 py-4">Nombre del Rol</th><th class="px-6 py-4">Estatus</th></tr>';
-            
+            head.innerHTML = '<tr><th class="px-6 py-4">Usuario</th><th class="px-6 py-4">Correo</th><th class="px-6 py-4">Rol</th><th class="px-6 py-4">Acción</th></tr>';
             const dataList = Array.isArray(result) ? result : (result.data || []);
             if (dataList.length === 0) {
-                body.innerHTML = "<tr><td colspan='3' class='p-10 text-center text-slate-400 italic'>No hay roles configurados</td></tr>";
+                body.innerHTML = "<tr><td colspan='4' class='p-10 text-center text-slate-400 italic'>No hay cuentas registradas</td></tr>";
             } else {
-                dataList.forEach(r => {
+                dataList.forEach(cuenta => {
+                    const esAncla = (cuenta.email || "").toLowerCase() === "lfpaez30@ucatolica.edu.co";
+                    const puedeAsignarSuper = esSuperadminAncla(user);
+                    let acciones = '<span class="text-slate-400 text-xs font-bold uppercase">Cuenta ancla</span>';
+                    if (!esAncla) {
+                        acciones = `
+                            <div class="flex items-center gap-3">
+                                <select id="rol-${cuenta.id_usuario}" class="p-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-ucc-dorado">
+                                    ${opcionesRol(cuenta.id_rol, puedeAsignarSuper)}
+                                </select>
+                                <button onclick="cambiarRol(${cuenta.id_usuario})" class="text-ucc-azul font-bold hover:underline text-xs uppercase">Aplicar</button>
+                                <button onclick="eliminarCuenta(${cuenta.id_usuario})" class="text-red-500 font-bold hover:underline text-xs uppercase"><i class="fas fa-trash-alt"></i> Eliminar</button>
+                            </div>`;
+                    }
                     body.innerHTML += `
                         <tr class="border-b hover:bg-slate-50/50 transition">
-                            <td class="px-6 py-4 text-slate-500 font-mono">#${r.id_rol}</td>
-                            <td class="px-6 py-4 font-bold text-slate-700">${r.nombre}</td>
-                            <td class="px-6 py-4 text-ucc-azul"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-ucc-dorado rounded-full"></span> Activo</span></td>
+                            <td class="px-6 py-4 font-bold text-slate-700">${cuenta.nombre}</td>
+                            <td class="px-6 py-4 text-slate-600">${cuenta.email}</td>
+                            <td class="px-6 py-4"><span class="bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold uppercase">${nombreRol(cuenta.id_rol)}</span></td>
+                            <td class="px-6 py-4">${acciones}</td>
                         </tr>`;
                 });
             }
@@ -244,6 +266,90 @@ function prepararModal(tipo, editData = null) {
         `;
         document.getElementById('modalMaestro').classList.remove('hidden');
         document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, 'docente');
+    } else if (tipo === 'superadmin') {
+        if (!esSuperadminAncla(user)) {
+            alert("Solo el superadministrador ancla puede crear otro superadministrador");
+            return;
+        }
+        document.getElementById('modal-titulo').innerText = "Nuevo superadministrador";
+        campos.innerHTML = `
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 uppercase">Nombre Completo</label>
+                <input type="text" id="m-nom-super" placeholder="Nombre" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 uppercase">Correo</label>
+                <input type="email" id="m-email-super" placeholder="correo@ucatolica.edu.co" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 uppercase">Contraseña</label>
+                <input type="password" id="m-pass-super" placeholder="Contraseña" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+            </div>
+        `;
+        document.getElementById('modalMaestro').classList.remove('hidden');
+        document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, 'superadmin');
+    }
+}
+
+function esSuperadminAncla(user) {
+    return (user.email || "").toLowerCase() === "lfpaez30@ucatolica.edu.co";
+}
+
+function nombreRol(idRol) {
+    const nombres = { 1: "Superadministrador", 2: "Administrador", 3: "Docente" };
+    return nombres[idRol] || "Sin rol";
+}
+
+function opcionesRol(idActual, puedeAsignarSuper) {
+    let html = "";
+    if (puedeAsignarSuper || idActual == 1) {
+        html += `<option value="1" ${idActual == 1 ? "selected" : ""}>Superadministrador</option>`;
+    }
+    html += `<option value="2" ${idActual == 2 ? "selected" : ""}>Administrador</option>`;
+    html += `<option value="3" ${idActual == 3 ? "selected" : ""}>Docente</option>`;
+    return html;
+}
+
+async function cambiarRol(idUsuario) {
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    if (parseInt(user.id_rol) !== 1) {
+        alert("Solo un superadministrador puede cambiar el rol");
+        return;
+    }
+    const select = document.getElementById(`rol-${idUsuario}`);
+    try {
+        const res = await fetch(`${API_URL}/usuarios/${idUsuario}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                id_rol: parseInt(select.value, 10),
+                solicitante_email: user.email
+            })
+        });
+        const result = await res.json();
+        alert(result.message || "Rol actualizado");
+        mostrarSeccion(seccionActual);
+    } catch (e) {
+        alert("Error al cambiar el rol");
+    }
+}
+
+async function eliminarCuenta(idUsuario) {
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    if (parseInt(user.id_rol) !== 1) {
+        alert("Solo un superadministrador puede eliminar cuentas");
+        return;
+    }
+    if (!confirm("¿Seguro que quieres eliminar esta cuenta?")) return;
+    try {
+        const res = await fetch(`${API_URL}/usuarios/${idUsuario}?solicitante_email=${encodeURIComponent(user.email)}`, {
+            method: "DELETE"
+        });
+        const result = await res.json();
+        alert(result.message || "Cuenta eliminada");
+        mostrarSeccion(seccionActual);
+    } catch (e) {
+        alert("Error al eliminar la cuenta");
     }
 }
 
@@ -322,6 +428,15 @@ async function enviarFormulario(e, tipo) {
             nombre: document.getElementById('m-nom-doc').value,
             correo: document.getElementById('m-corr-doc').value
         };
+    } else if (tipo === 'superadmin') {
+        data = {
+            nombre: document.getElementById('m-nom-super').value,
+            email: document.getElementById('m-email-super').value,
+            password: document.getElementById('m-pass-super').value,
+            id_rol: 1,
+            solicitante_email: user.email
+        };
+        endpoint = `${API_URL}/usuarios`;
     }
     
     try {

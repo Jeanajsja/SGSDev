@@ -6,9 +6,11 @@ from login_controller import crear_router
 from login_service import LoginService
 from repositories.postgres_login_repository import PostgresLoginRepository
 from security.werkzeug_password_hasher import WerkzeugPasswordHasher
+from seed_superadmin import asegurar_superadmin
 
 
 def create_app(service=None):
+    asegurar_superadmin(get_connection)
     if service is None:
         service = LoginService(PostgresLoginRepository(get_connection), WerkzeugPasswordHasher())
 

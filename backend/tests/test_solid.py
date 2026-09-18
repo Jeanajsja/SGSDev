@@ -94,8 +94,41 @@ class TestL_Sustitucion(unittest.TestCase):
 class TestI_Segregacion(unittest.TestCase):
     def test_registro_no_pide_verificar(self):
         service = UsuarioService(MemoryUsuarioRepository(), FakeHasher(), FakeEmailOk())
-        res = service.crear_usuario({"nombre": "Ana", "email": "ana@gmail.com", "password": "123", "id_rol": 1})
+        res = service.crear_usuario({"nombre": "Ana", "email": "ana@gmail.com", "password": "123", "id_rol": 2})
         self.assertEqual(res["status"], "ok")
+
+    def test_solo_el_ancla_crea_superadmin(self):
+        service = UsuarioService(MemoryUsuarioRepository(), FakeHasher(), FakeEmailOk())
+        denegado = service.crear_usuario(
+            {"nombre": "Otra", "email": "otra@ucatolica.edu.co", "password": "123", "id_rol": 1}
+        )
+        self.assertEqual(denegado["status"], "error")
+        ok = service.crear_usuario(
+            {
+                "nombre": "Otra",
+                "email": "otra@ucatolica.edu.co",
+                "password": "123",
+                "id_rol": 1,
+                "solicitante_email": "lfpaez30@ucatolica.edu.co",
+            }
+        )
+        self.assertEqual(ok["status"], "ok")
+
+    def test_superadmin_cambia_rol_y_elimina(self):
+        repo = MemoryUsuarioRepository()
+        repo.crear("Luisa", "lfpaez30@ucatolica.edu.co", "hash:123", 1)
+        service = UsuarioService(repo, FakeHasher(), FakeEmailOk())
+        service.crear_usuario({"nombre": "Ana", "email": "ana@gmail.com", "password": "123", "id_rol": 3})
+        ana = repo.buscar_por_email("ana@gmail.com")
+        denegado = service.cambiar_rol(ana["id_usuario"], 2, "ana@gmail.com")
+        self.assertEqual(denegado["status"], "error")
+        cambiado = service.cambiar_rol(ana["id_usuario"], 2, "lfpaez30@ucatolica.edu.co")
+        self.assertEqual(cambiado["status"], "ok")
+        self.assertEqual(repo.buscar_por_id(ana["id_usuario"])["id_rol"], 2)
+        ancla = repo.buscar_por_email("lfpaez30@ucatolica.edu.co")
+        self.assertEqual(service.eliminar_cuenta(ancla["id_usuario"], "lfpaez30@ucatolica.edu.co")["status"], "error")
+        self.assertEqual(service.eliminar_cuenta(ana["id_usuario"], "lfpaez30@ucatolica.edu.co")["status"], "ok")
+        self.assertIsNone(repo.buscar_por_id(ana["id_usuario"]))
 
     def test_login_no_pide_hash(self):
         repo = MemoryUsuarioRepository()
