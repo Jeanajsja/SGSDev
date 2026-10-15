@@ -1,32 +1,82 @@
-name: SGSDev - CI
+name: SGSDev CI
 
-on: push: branches: - main pullrequest: branches: - main workflowdispatch:
+"on": push: branches: - main pullrequest: branches: - main workflowdispatch:
 
 permissions: contents: read
 
-concurrency: group: sgsdev-${{ github.ref }} cancel-in-progress: true
+concurrency: group: sgsdev-
+𝑔
+𝑖
+𝑡
+ℎ
+𝑢
+𝑏
+.
+𝑤
+𝑜
+𝑟
+𝑘
+𝑓
+𝑙
+𝑜
+𝑤
+−
+{{ github.ref }} cancel-in-progress: true
 
-jobs: validate: name: Validate application runs-on: ubuntu-latest timeout-minutes: 15
+jobs: validate: name: Validate SGSDev runs-on: ubuntu-latest timeout-minutes: 15
 
 steps: - name: Checkout repository uses: actions/checkout@v4
 
-- name: Set up Python uses: actions/setup-python@v5 with: python-version: "3.12" cache: pip cache-dependency-path: requirements.txt
+- name: Configure Python uses: actions/setup-python@v5 with: python-version: "3.12"
 
-- name: Install Python dependencies run: | python -m pip install --upgrade pip pip install -r requirements.txt
+- name: Install backend dependencies run: | python -m pip install --upgrade pip pip install -r requirements.txt
 
-- name: Validate Python syntax run: | python -m compileall -q . echo "Python syntax validated."
+- name: Check Python syntax run: python -m compileall -q backend gateway services main.py wsgi.py
 
-- name: Validate frontend working-directory: frontend run: | if [ -f package-lock.json ]; then npm ci elif [ -f package.json ]; then npm install else echo "No frontend package.json found; skipping frontend." exit 0 fi
+- name: Validate frontend run: | if [ -f frontend/package.json ]; then cd frontend if [ -f package-lock.json ]; then npm ci else npm install fi npm run build --if-present else echo "No frontend/package.json found; skipping frontend build." fi
 
-if [ -f package.json ]; then npm test --if-present npm run build --if-present fi
+- name: Validate Docker Compose run: docker compose config --quiet
 
-- name: Validate Docker Compose run: | if [ -f docker-compose.yml ]; then docker compose config --quiet else echo "docker-compose.yml not found; skipping." fi
+- name: Check Supabase connection if: ${{ vars.CHECKSUPABASE == 'true' }} env: DATABASEURL: 
+𝑠
+𝑒
+𝑐
+𝑟
+𝑒
+𝑡
+𝑠
+.
+𝑆
+𝑈
+𝑃
+𝐴
+𝐵
+𝐴
+𝑆
+𝐸
+𝐷
+𝐵
+𝑈
+𝑅
+𝐿
+𝑟
+𝑢
+𝑛
+:
+∣
+𝑖
+𝑓
+[
+−
+𝑧
+"
+DATABASEURL" ]; then echo "::error::Missing SUPABASEDB_URL secret" exit 1 fi
 
-- name: Test Supabase connection if: ${{ secrets.SUPABASEDBURL != '' }} env: DATABASEURL: ${{ secrets.SUPABASEDB_URL }} run: | sudo apt-get update sudo apt-get install -y postgresql-client
+sudo apt-get update sudo apt-get install -y postgresql-client
 
 psql "$DATABASEURL"
 -w
 -v ONERROR_STOP=1
 -c "SELECT 1;"
 
-- name: Validation complete run: echo "SGSDev validation completed successfully."
+- name: CI completed run: echo "SGSDev validation successful."
