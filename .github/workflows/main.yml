@@ -1,1 +1,32 @@
+name: SGSDev - CI
 
+on: push: branches: - main pullrequest: branches: - main workflowdispatch:
+
+permissions: contents: read
+
+concurrency: group: sgsdev-${{ github.ref }} cancel-in-progress: true
+
+jobs: validate: name: Validate application runs-on: ubuntu-latest timeout-minutes: 15
+
+steps: - name: Checkout repository uses: actions/checkout@v4
+
+- name: Set up Python uses: actions/setup-python@v5 with: python-version: "3.12" cache: pip cache-dependency-path: requirements.txt
+
+- name: Install Python dependencies run: | python -m pip install --upgrade pip pip install -r requirements.txt
+
+- name: Validate Python syntax run: | python -m compileall -q . echo "Python syntax validated."
+
+- name: Validate frontend working-directory: frontend run: | if [ -f package-lock.json ]; then npm ci elif [ -f package.json ]; then npm install else echo "No frontend package.json found; skipping frontend." exit 0 fi
+
+if [ -f package.json ]; then npm test --if-present npm run build --if-present fi
+
+- name: Validate Docker Compose run: | if [ -f docker-compose.yml ]; then docker compose config --quiet else echo "docker-compose.yml not found; skipping." fi
+
+- name: Test Supabase connection if: ${{ secrets.SUPABASEDBURL != '' }} env: DATABASEURL: ${{ secrets.SUPABASEDB_URL }} run: | sudo apt-get update sudo apt-get install -y postgresql-client
+
+psql "$DATABASEURL"
+-w
+-v ONERROR_STOP=1
+-c "SELECT 1;"
+
+- name: Validation complete run: echo "SGSDev validation completed successfully."
