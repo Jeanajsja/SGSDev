@@ -25,7 +25,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-        application.include_router(vista_router)
+    application.include_router(vista_router)
     application.include_router(usuario_router)
     application.include_router(docente_router)
     application.include_router(reserva_router)
