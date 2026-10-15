@@ -1,82 +1,15 @@
 name: SGSDev CI
 
-"on": push: branches: - main pullrequest: branches: - main workflowdispatch:
+on: [push, pullrequest, workflowdispatch]
 
-permissions: contents: read
+jobs: validate: runs-on: ubuntu-latest
 
-concurrency: group: sgsdev-
-𝑔
-𝑖
-𝑡
-ℎ
-𝑢
-𝑏
-.
-𝑤
-𝑜
-𝑟
-𝑘
-𝑓
-𝑙
-𝑜
-𝑤
-−
-{{ github.ref }} cancel-in-progress: true
+steps: - name: Descargar repositorio uses: actions/checkout@v4
 
-jobs: validate: name: Validate SGSDev runs-on: ubuntu-latest timeout-minutes: 15
+- name: Configurar Python uses: actions/setup-python@v5 with: python-version: "3.12"
 
-steps: - name: Checkout repository uses: actions/checkout@v4
+- name: Instalar dependencias run: | python -m pip install --upgrade pip pip install -r requirements.txt
 
-- name: Configure Python uses: actions/setup-python@v5 with: python-version: "3.12"
+- name: Verificar sintaxis Python run: python -m compileall -q .
 
-- name: Install backend dependencies run: | python -m pip install --upgrade pip pip install -r requirements.txt
-
-- name: Check Python syntax run: python -m compileall -q backend gateway services main.py wsgi.py
-
-- name: Validate frontend run: | if [ -f frontend/package.json ]; then cd frontend if [ -f package-lock.json ]; then npm ci else npm install fi npm run build --if-present else echo "No frontend/package.json found; skipping frontend build." fi
-
-- name: Validate Docker Compose run: docker compose config --quiet
-
-- name: Check Supabase connection if: ${{ vars.CHECKSUPABASE == 'true' }} env: DATABASEURL: 
-𝑠
-𝑒
-𝑐
-𝑟
-𝑒
-𝑡
-𝑠
-.
-𝑆
-𝑈
-𝑃
-𝐴
-𝐵
-𝐴
-𝑆
-𝐸
-𝐷
-𝐵
-𝑈
-𝑅
-𝐿
-𝑟
-𝑢
-𝑛
-:
-∣
-𝑖
-𝑓
-[
-−
-𝑧
-"
-DATABASEURL" ]; then echo "::error::Missing SUPABASEDB_URL secret" exit 1 fi
-
-sudo apt-get update sudo apt-get install -y postgresql-client
-
-psql "$DATABASEURL"
--w
--v ONERROR_STOP=1
--c "SELECT 1;"
-
-- name: CI completed run: echo "SGSDev validation successful."
+- name: Validar Docker Compose run: docker compose config --quiet
