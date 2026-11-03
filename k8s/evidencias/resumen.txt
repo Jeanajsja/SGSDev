@@ -1,0 +1,6 @@
+﻿Cluster: kind-sgsdev
+Namespace: sgsdev
+Pods Running: monolito, login, salones, docentes, roles, usuarios, reservas, gateway
+Entrada unica: http://localhost:8080
+Gateway health: http://localhost:8080/gateway/health
+APIs: /api/roles /api/salones /api/docentes /api/usuarios /api/reservas /api/login

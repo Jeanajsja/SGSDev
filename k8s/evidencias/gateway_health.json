@@ -1,0 +1,1 @@
+﻿{"status":"ok","gateway":"nginx","platform":"kubernetes","routes":{"/api/login":"login","/api/salones":"salones","/api/docentes":"docentes","/api/roles":"roles","/api/usuarios":"usuarios","/api/reservas":"reservas","default":"monolito"}}

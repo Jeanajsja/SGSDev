@@ -1,0 +1,19 @@
+﻿NAME                            READY   STATUS    RESTARTS   AGE     IP            NODE                   NOMINATED NODE   READINESS GATES
+pod/docentes-56999fb56f-bvrgh   1/1     Running   0          6m41s   10.244.0.8    sgsdev-control-plane   <none>           <none>
+pod/gateway-6fdb54b99b-qnnnb    1/1     Running   0          38s     10.244.0.13   sgsdev-control-plane   <none>           <none>
+pod/login-6f6c45df97-95hrh      1/1     Running   0          6m42s   10.244.0.5    sgsdev-control-plane   <none>           <none>
+pod/monolito-79fb6667ff-v4pc8   1/1     Running   0          6m42s   10.244.0.6    sgsdev-control-plane   <none>           <none>
+pod/reservas-6f76647bcc-kptp4   1/1     Running   0          6m41s   10.244.0.11   sgsdev-control-plane   <none>           <none>
+pod/roles-6c44cdbc4c-sh9fd      1/1     Running   0          6m41s   10.244.0.9    sgsdev-control-plane   <none>           <none>
+pod/salones-6969b948c5-x9zvs    1/1     Running   0          6m41s   10.244.0.7    sgsdev-control-plane   <none>           <none>
+pod/usuarios-bd84cb587-bx4mk    1/1     Running   0          6m41s   10.244.0.10   sgsdev-control-plane   <none>           <none>
+
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE     SELECTOR
+service/docentes   ClusterIP   10.96.122.142   <none>        5003/TCP       6m41s   app=docentes
+service/gateway    NodePort    10.96.205.138   <none>        80:30080/TCP   6m40s   app=gateway
+service/login      ClusterIP   10.96.240.155   <none>        5001/TCP       6m42s   app=login
+service/monolito   ClusterIP   10.96.10.42     <none>        5000/TCP       6m42s   app=monolito
+service/reservas   ClusterIP   10.96.32.185    <none>        5006/TCP       6m41s   app=reservas
+service/roles      ClusterIP   10.96.19.22     <none>        5004/TCP       6m41s   app=roles
+service/salones    ClusterIP   10.96.68.2      <none>        5002/TCP       6m41s   app=salones
+service/usuarios   ClusterIP   10.96.251.24    <none>        5005/TCP       6m41s   app=usuarios

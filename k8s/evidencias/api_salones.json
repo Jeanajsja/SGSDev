@@ -1,0 +1,1 @@
+﻿{"status":"ok","data":[{"id_salon":1,"nombre":"Laboratorio 1","capacidad":23,"estado":"disponible","ubicacion":"Piso 1"},{"id_salon":2,"nombre":"Laboratorio 2","capacidad":30,"estado":"disponible","ubicacion":"Piso 1"},{"id_salon":3,"nombre":"Laboratorio 3","capacidad":40,"estado":"disponible","ubicacion":"Piso 1"}]}
