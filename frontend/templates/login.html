@@ -105,11 +105,23 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
+
+                // Verificar que la respuesta sea JSON válido antes de parsear
+                const contentType = res.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    alert("El servidor no está disponible en este momento. Intenta de nuevo.");
+                    return;
+                }
+
                 const result = await res.json();
-                alert(result.message);
-                if (res.ok) toggle();
+                if (res.ok) {
+                    alert(result.message || "Cuenta creada exitosamente.");
+                    toggle();
+                } else {
+                    alert("Error: " + (result.message || result.detail || "No se pudo crear la cuenta."));
+                }
             } catch (err) {
-                alert("Error al conectar para el registro.");
+                alert("Error al conectar con el servidor. Verifica tu conexión e intenta de nuevo.");
             }
         };
     </script>
