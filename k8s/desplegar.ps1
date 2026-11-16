@@ -19,12 +19,12 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el cluster Kind" }
 
 Write-Host "Construyendo imagenes..."
 docker build -t sgsdev-monolito:latest .
-docker build -t sgsdev-login:latest ./services/login
-docker build -t sgsdev-salones:latest ./services/salones
-docker build -t sgsdev-docentes:latest ./services/docentes
-docker build -t sgsdev-roles:latest ./services/roles
-docker build -t sgsdev-usuarios:latest ./services/usuarios
-docker build -t sgsdev-reservas:latest ./services/reservas
+docker build -t sgsdev-login:latest -f services/login/Dockerfile .
+docker build -t sgsdev-salones:latest -f services/salones/Dockerfile .
+docker build -t sgsdev-docentes:latest -f services/docentes/Dockerfile .
+docker build -t sgsdev-roles:latest -f services/roles/Dockerfile .
+docker build -t sgsdev-usuarios:latest -f services/usuarios/Dockerfile .
+docker build -t sgsdev-reservas:latest -f services/reservas/Dockerfile .
 
 Write-Host "Cargando imagenes en Kind..."
 foreach ($img in @(
@@ -34,7 +34,13 @@ foreach ($img in @(
 
 Write-Host "Aplicando manifiestos..."
 kubectl apply -f "$PSScriptRoot\namespace.yaml"
-kubectl apply -f "$PSScriptRoot\db-secret.yaml"
+$envFile = Join-Path $root ".env"
+if (-not (Test-Path $envFile)) {
+    throw "Falta .env. Créalo desde .env.example y configura DB_*, JWT_SECRET y el aprovisionamiento inicial."
+}
+kubectl -n sgsdev create secret generic sgsdev-db --from-env-file="$envFile" --dry-run=client -o yaml |
+    kubectl apply -f -
+if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el secreto de Kubernetes desde .env" }
 kubectl apply -f "$PSScriptRoot\login.yaml"
 kubectl apply -f "$PSScriptRoot\salones.yaml"
 kubectl apply -f "$PSScriptRoot\docentes.yaml"
