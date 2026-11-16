@@ -1,0 +1,6 @@
+**
+!services/
+!services/salones/
+!services/salones/**
+!services/common/
+!services/common/**
