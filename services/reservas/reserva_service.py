@@ -6,9 +6,16 @@ class ReservaService:
     def __init__(self, repository: IReservaRepository):
         self._repository = repository
 
-    def listar(self):
+    def listar(self, principal=None):
         try:
-            return {"status": "ok", "data": self._repository.listar_detalle()}
+            reservas = self._repository.listar_detalle()
+            if principal and principal["id_rol"] == 3:
+                reservas = [
+                    reserva
+                    for reserva in reservas
+                    if reserva.get("id_docente") == principal["id_usuario"]
+                ]
+            return {"status": "ok", "data": reservas}
         except ConnectionError as e:
             return {"status": "error", "message": str(e)}
         except Exception as e:
@@ -51,8 +58,17 @@ class ReservaService:
             return {"status": "error", "message": f"Error al actualizar reserva: {str(e)}"}
         return {"status": "ok", "message": "Reserva actualizada con éxito"}
 
-    def cancelar_reserva(self, id_reserva):
+    def cancelar_reserva(self, id_reserva, principal=None):
         try:
+            if principal and principal["id_rol"] == 3:
+                reservas = self._repository.listar_detalle()
+                propia = any(
+                    reserva.get("id_reserva") == id_reserva
+                    and reserva.get("id_docente") == principal["id_usuario"]
+                    for reserva in reservas
+                )
+                if not propia:
+                    return {"status": "error", "message": "No puedes cancelar esta reserva"}
             id_salon = self._repository.cancelar(id_reserva)
             if id_salon is not None:
                 self._repository.promover_siguiente_cola(id_salon)
