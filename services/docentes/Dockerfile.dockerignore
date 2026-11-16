@@ -1,0 +1,6 @@
+**
+!services/
+!services/docentes/
+!services/docentes/**
+!services/common/
+!services/common/**
