@@ -64,11 +64,13 @@ class UsuarioService:
                 "message": "Solo el superadministrador ancla puede asignar el rol de superadministrador",
             }
         try:
-            self._repository.actualizar_rol(id_usuario, nuevo_rol)
+            actualizado = self._repository.actualizar_rol(id_usuario, nuevo_rol)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
             return {"status": "error", "message": f"No se pudo cambiar el rol: {str(e)}"}
+        if not actualizado:
+            return {"status": "error", "message": "La cuenta ya no existe"}
         return {"status": "ok", "message": "Rol actualizado"}
 
     def eliminar_cuenta(self, id_usuario, solicitante_email):
@@ -83,11 +85,13 @@ class UsuarioService:
         if (objetivo.get("email") or "").lower() == (solicitante.get("email") or "").lower():
             return {"status": "error", "message": "No puedes eliminar tu propia cuenta"}
         try:
-            self._repository.eliminar(id_usuario)
+            eliminado = self._repository.eliminar(id_usuario)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
             return {"status": "error", "message": f"No se pudo eliminar la cuenta: {str(e)}"}
+        if not eliminado:
+            return {"status": "error", "message": "La cuenta ya no existe"}
         return {"status": "ok", "message": "Cuenta eliminada"}
 
     def _exigir_superadmin(self, email):
