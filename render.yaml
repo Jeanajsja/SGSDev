@@ -14,7 +14,7 @@ services:
       - key: DB_NAME
         value: postgres
       - key: DB_USER
-        sync: false
+        value: postgres.qgwpttpknrevnbdsjnrx
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSLMODE
