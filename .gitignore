@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+k8s/db-secret.yaml
 
 __pycache__/
 *.pyc
