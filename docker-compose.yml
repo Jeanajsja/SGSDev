@@ -21,43 +21,77 @@ services:
       - "5000:5000"
 
   login:
-    build: ./services/login
+    build:
+      context: .
+      dockerfile: services/login/Dockerfile
     container_name: sgsdev-ms-login
     env_file: .env
+    environment:
+      SUPABASE_URL: ""
+      SUPABASE_KEY: ""
     ports:
       - "5001:5001"
 
   salones:
-    build: ./services/salones
+    build:
+      context: .
+      dockerfile: services/salones/Dockerfile
     container_name: sgsdev-ms-salones
     env_file: .env
+    environment:
+      SUPERADMIN_PASSWORD: ""
+      SUPABASE_URL: ""
+      SUPABASE_KEY: ""
     ports:
       - "5002:5002"
 
   docentes:
-    build: ./services/docentes
+    build:
+      context: .
+      dockerfile: services/docentes/Dockerfile
     container_name: sgsdev-ms-docentes
     env_file: .env
+    environment:
+      SUPERADMIN_PASSWORD: ""
+      SUPABASE_URL: ""
+      SUPABASE_KEY: ""
     ports:
       - "5003:5003"
 
   roles:
-    build: ./services/roles
+    build:
+      context: .
+      dockerfile: services/roles/Dockerfile
     container_name: sgsdev-ms-roles
     env_file: .env
+    environment:
+      SUPERADMIN_PASSWORD: ""
+      SUPABASE_URL: ""
+      SUPABASE_KEY: ""
     ports:
       - "5004:5004"
 
   usuarios:
-    build: ./services/usuarios
+    build:
+      context: .
+      dockerfile: services/usuarios/Dockerfile
     container_name: sgsdev-ms-usuarios
     env_file: .env
+    environment:
+      SUPABASE_URL: ""
+      SUPABASE_KEY: ""
     ports:
       - "5005:5005"
 
   reservas:
-    build: ./services/reservas
+    build:
+      context: .
+      dockerfile: services/reservas/Dockerfile
     container_name: sgsdev-ms-reservas
     env_file: .env
+    environment:
+      SUPERADMIN_PASSWORD: ""
+      SUPABASE_URL: ""
+      SUPABASE_KEY: ""
     ports:
       - "5006:5006"
