@@ -2,9 +2,68 @@ const API_URL = window.location.origin + "/api";
 let seccionActual = 'dashboard';
 let chartInstance = null;
 
+async function apiFetch(url, options = {}) {
+    const token = sessionStorage.getItem('access_token');
+    if (!token) {
+        cerrarSesion();
+        throw new Error("Sesión no autenticada");
+    }
+
+    const headers = new Headers(options.headers || {});
+    headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401) {
+        cerrarSesion();
+        throw new Error("Sesión expirada");
+    }
+    return response;
+}
+
+function agregarCelda(fila, texto, clase = "") {
+    const celda = document.createElement('td');
+    celda.className = clase;
+    celda.textContent = texto == null ? "" : String(texto);
+    fila.appendChild(celda);
+    return celda;
+}
+
+function agregarBoton(contenedor, texto, icono, clase, accion) {
+    const boton = document.createElement('button');
+    boton.type = "button";
+    boton.className = clase;
+    boton.setAttribute("aria-label", texto);
+    if (icono) {
+        const icon = document.createElement('i');
+        icon.className = icono;
+        boton.append(icon);
+    }
+    boton.append(document.createTextNode(`${icono ? " " : ""}${texto}`));
+    boton.addEventListener("click", accion);
+    contenedor.appendChild(boton);
+    return boton;
+}
+
+function mostrarTablaVacia(body, columnas, mensaje, clase = "p-10 text-center text-slate-400 italic") {
+    const fila = document.createElement('tr');
+    const celda = document.createElement('td');
+    celda.colSpan = columnas;
+    celda.className = clase;
+    celda.textContent = mensaje;
+    fila.appendChild(celda);
+    body.replaceChildren(fila);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    const user = JSON.parse(sessionStorage.getItem('user'));
-    if (!user) { window.location.href = 'login.html'; return; }
+    let user;
+    try {
+        user = JSON.parse(sessionStorage.getItem('user'));
+    } catch {
+        user = null;
+    }
+    if (!user || !sessionStorage.getItem('access_token')) {
+        cerrarSesion();
+        return;
+    }
 
     document.getElementById('user-display-name').innerText = user.nombre;
     const rolesMap = { 1: 'SUPERADMINISTRADOR', 2: 'ADMINISTRADOR', 3: 'DOCENTE' };
@@ -77,7 +136,7 @@ async function cargarTabla(tipo) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     const head = document.getElementById('tabla-head');
     const body = document.getElementById('tabla-body');
-    body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-slate-400 italic'>Sincronizando con Supabase...</td></tr>";
+    mostrarTablaVacia(body, 5, "Sincronizando con Supabase...");
 
     try {
         let fetchUrl = `${API_URL}/${tipo}`;
@@ -88,41 +147,49 @@ async function cargarTabla(tipo) {
             fetchUrl = `${API_URL}/usuarios`;
         }
         
-        const res = await fetch(fetchUrl);
+        const res = await apiFetch(fetchUrl);
         const result = await res.json();
-        body.innerHTML = "";
+        body.replaceChildren();
 
         if (tipo === 'reservas' || tipo === 'reservas_globales') {
             head.innerHTML = '<tr><th class="px-6 py-4">Docente</th><th class="px-6 py-4">Salón</th><th class="px-6 py-4">Fecha</th><th class="px-6 py-4">Horario</th><th class="px-6 py-4">Acción</th></tr>';
-            
-            let data = result.data || [];
-            // Si es vista del docente, filtrar únicamente sus reservas
-            if (tipo === 'reservas' && user.id_rol == 3) {
-                data = data.filter(r => r.id_docente == user.id_usuario);
-            }
+            const data = result.data || [];
 
             if (data.length === 0) {
-                body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-slate-400 italic'>No hay reservas registradas</td></tr>";
+                mostrarTablaVacia(body, 5, "No hay reservas registradas");
             } else {
                 data.forEach(r => {
                     const h_ini = r.hora_inicio ? r.hora_inicio.substring(0,5) : '--:--';
                     const h_fin = r.hora_fin ? r.hora_fin.substring(0,5) : '--:--';
-                    
-                    // Botón editar condicional (Administrador o Administrativo)
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-slate-50/50 transition";
+                    agregarCelda(row, r.docente, "px-6 py-4 font-bold text-slate-700");
+                    agregarCelda(row, r.salon, "px-6 py-4 text-slate-600");
+                    agregarCelda(row, r.fecha, "px-6 py-4 text-slate-600");
+                    const horario = agregarCelda(row, "", "px-6 py-4 text-slate-600");
+                    const horarioBadge = document.createElement('span');
+                    horarioBadge.className = "bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold";
+                    horarioBadge.textContent = `${h_ini} - ${h_fin}`;
+                    horario.appendChild(horarioBadge);
+                    const acciones = agregarCelda(row, "", "px-6 py-4");
                     const canEdit = user.id_rol == 1 || user.id_rol == 2;
-                    const btnEditar = canEdit ? `<button onclick="editarReserva(${r.id_reserva}, '${r.fecha}', '${h_ini}', '${h_fin}', ${r.id_salon}, ${r.id_docente})" class="text-ucc-azul font-bold hover:underline mr-4"><i class="fas fa-edit"></i></button>` : '';
-
-                    body.innerHTML += `
-                        <tr class="border-b hover:bg-slate-50/50 transition">
-                            <td class="px-6 py-4 font-bold text-slate-700">${r.docente}</td>
-                            <td class="px-6 py-4 text-slate-600">${r.salon}</td>
-                            <td class="px-6 py-4 text-slate-600">${r.fecha}</td>
-                            <td class="px-6 py-4 text-slate-600"><span class="bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold">${h_ini} - ${h_fin}</span></td>
-                            <td class="px-6 py-4">
-                                ${btnEditar}
-                                <button onclick="cancelarReserva(${r.id_reserva})" class="text-red-500 font-bold hover:underline"><i class="fas fa-trash-alt"></i> Cancelar</button>
-                            </td>
-                        </tr>`;
+                    if (canEdit) {
+                        agregarBoton(
+                            acciones,
+                            "Editar",
+                            "fas fa-edit",
+                            "text-ucc-azul font-bold hover:underline mr-4",
+                            () => editarReserva(r.id_reserva, r.fecha, h_ini, h_fin, r.id_salon, r.id_docente)
+                        );
+                    }
+                    agregarBoton(
+                        acciones,
+                        "Cancelar",
+                        "fas fa-trash-alt",
+                        "text-red-500 font-bold hover:underline",
+                        () => cancelarReserva(r.id_reserva)
+                    );
+                    body.appendChild(row);
                 });
             }
             if (tipo === 'reservas') {
@@ -132,18 +199,32 @@ async function cargarTabla(tipo) {
             head.innerHTML = '<tr><th class="px-6 py-4">Nombre</th><th class="px-6 py-4">Capacidad</th><th class="px-6 py-4">Ubicación</th><th class="px-6 py-4">Estado</th><th class="px-6 py-4">Acción</th></tr>';
             
             if (!result.data || result.data.length === 0) {
-                body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-slate-400 italic'>No hay salones registrados</td></tr>";
+                mostrarTablaVacia(body, 5, "No hay salones registrados");
             } else {
                 result.data.forEach(s => {
-                    const badgeColor = s.estado === 'disponible' ? 'bg-ucc-plata text-ucc-azul' : 'bg-[#fdf6de] text-[#8a6a05]';
-                    body.innerHTML += `
-                        <tr class="border-b hover:bg-slate-50/50 transition">
-                            <td class="px-6 py-4 font-bold text-slate-700">${s.nombre}</td>
-                            <td class="px-6 py-4 text-slate-600">${s.capacidad} personas</td>
-                            <td class="px-6 py-4 text-slate-600">${s.ubicacion}</td>
-                            <td class="px-6 py-4"><span class="${badgeColor} px-2.5 py-1 rounded-lg text-xs font-bold uppercase">${s.estado}</span></td>
-                            <td class="px-6 py-4">${user.id_rol == 1 ? `<button onclick="editarSalon(${s.id_salon}, '${s.nombre}', ${s.capacidad}, '${s.ubicacion}')" class="text-ucc-azul font-bold hover:underline"><i class="fas fa-edit"></i> Editar</button>` : '-'}</td>
-                        </tr>`;
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-slate-50/50 transition";
+                    agregarCelda(row, s.nombre, "px-6 py-4 font-bold text-slate-700");
+                    agregarCelda(row, `${s.capacidad} personas`, "px-6 py-4 text-slate-600");
+                    agregarCelda(row, s.ubicacion, "px-6 py-4 text-slate-600");
+                    const estado = agregarCelda(row, "", "px-6 py-4");
+                    const badge = document.createElement('span');
+                    badge.className = `${s.estado === 'disponible' ? 'bg-ucc-plata text-ucc-azul' : 'bg-[#fdf6de] text-[#8a6a05]'} px-2.5 py-1 rounded-lg text-xs font-bold uppercase`;
+                    badge.textContent = s.estado == null ? "" : String(s.estado);
+                    estado.appendChild(badge);
+                    const acciones = agregarCelda(row, "", "px-6 py-4");
+                    if (user.id_rol == 1) {
+                        agregarBoton(
+                            acciones,
+                            "Editar",
+                            "fas fa-edit",
+                            "text-ucc-azul font-bold hover:underline",
+                            () => editarSalon(s.id_salon, s.nombre, s.capacidad, s.ubicacion)
+                        );
+                    } else {
+                        acciones.textContent = "-";
+                    }
+                    body.appendChild(row);
                 });
             }
         } else if (tipo === 'docentes') {
@@ -151,50 +232,81 @@ async function cargarTabla(tipo) {
             
             const dataList = result.data || [];
             if (dataList.length === 0) {
-                body.innerHTML = "<tr><td colspan='4' class='p-10 text-center text-slate-400 italic'>No hay docentes registrados</td></tr>";
+                mostrarTablaVacia(body, 4, "No hay docentes registrados");
             } else {
                 dataList.forEach(d => {
-                    body.innerHTML += `
-                        <tr class="border-b hover:bg-slate-50/50 transition">
-                            <td class="px-6 py-4 text-slate-500 font-mono">#${d.id_docente}</td>
-                            <td class="px-6 py-4 font-bold text-slate-700">${d.nombre}</td>
-                            <td class="px-6 py-4 text-slate-600">${d.correo}</td>
-                            <td class="px-6 py-4"><span class="bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold uppercase">Docente</span></td>
-                        </tr>`;
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-slate-50/50 transition";
+                    agregarCelda(row, `#${d.id_docente}`, "px-6 py-4 text-slate-500 font-mono");
+                    agregarCelda(row, d.nombre, "px-6 py-4 font-bold text-slate-700");
+                    agregarCelda(row, d.correo, "px-6 py-4 text-slate-600");
+                    const perfil = agregarCelda(row, "", "px-6 py-4");
+                    const badge = document.createElement('span');
+                    badge.className = "bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold uppercase";
+                    badge.textContent = "Docente";
+                    perfil.appendChild(badge);
+                    body.appendChild(row);
                 });
             }
         } else if (tipo === 'roles') {
             head.innerHTML = '<tr><th class="px-6 py-4">Usuario</th><th class="px-6 py-4">Correo</th><th class="px-6 py-4">Rol</th><th class="px-6 py-4">Acción</th></tr>';
             const dataList = Array.isArray(result) ? result : (result.data || []);
             if (dataList.length === 0) {
-                body.innerHTML = "<tr><td colspan='4' class='p-10 text-center text-slate-400 italic'>No hay cuentas registradas</td></tr>";
+                mostrarTablaVacia(body, 4, "No hay cuentas registradas");
             } else {
                 dataList.forEach(cuenta => {
                     const esAncla = (cuenta.email || "").toLowerCase() === "lfpaez30@ucatolica.edu.co";
                     const puedeAsignarSuper = esSuperadminAncla(user);
-                    let acciones = '<span class="text-slate-400 text-xs font-bold uppercase">Cuenta ancla</span>';
-                    if (!esAncla) {
-                        acciones = `
-                            <div class="flex items-center gap-3">
-                                <select id="rol-${cuenta.id_usuario}" class="p-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-ucc-dorado">
-                                    ${opcionesRol(cuenta.id_rol, puedeAsignarSuper)}
-                                </select>
-                                <button onclick="cambiarRol(${cuenta.id_usuario})" class="text-ucc-azul font-bold hover:underline text-xs uppercase">Aplicar</button>
-                                <button onclick="eliminarCuenta(${cuenta.id_usuario})" class="text-red-500 font-bold hover:underline text-xs uppercase"><i class="fas fa-trash-alt"></i> Eliminar</button>
-                            </div>`;
+                    const row = document.createElement('tr');
+                    row.className = "border-b hover:bg-slate-50/50 transition";
+                    agregarCelda(row, cuenta.nombre, "px-6 py-4 font-bold text-slate-700");
+                    agregarCelda(row, cuenta.email, "px-6 py-4 text-slate-600");
+                    const rol = agregarCelda(row, "", "px-6 py-4");
+                    const badge = document.createElement('span');
+                    badge.className = "bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold uppercase";
+                    badge.textContent = nombreRol(cuenta.id_rol);
+                    rol.appendChild(badge);
+                    const acciones = agregarCelda(row, "", "px-6 py-4");
+                    if (esAncla) {
+                        const nota = document.createElement('span');
+                        nota.className = "text-slate-400 text-xs font-bold uppercase";
+                        nota.textContent = "Cuenta ancla";
+                        acciones.appendChild(nota);
+                    } else {
+                        const controles = document.createElement('div');
+                        controles.className = "flex items-center gap-3";
+                        const selector = document.createElement('select');
+                        selector.id = `rol-${cuenta.id_usuario}`;
+                        selector.className = "p-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-ucc-dorado";
+                        if (puedeAsignarSuper || cuenta.id_rol == 1) {
+                            selector.add(new Option("Superadministrador", "1"));
+                        }
+                        selector.add(new Option("Administrador", "2"));
+                        selector.add(new Option("Docente", "3"));
+                        selector.value = String(cuenta.id_rol);
+                        controles.appendChild(selector);
+                        agregarBoton(
+                            controles,
+                            "Aplicar",
+                            "",
+                            "text-ucc-azul font-bold hover:underline text-xs uppercase",
+                            () => cambiarRol(cuenta.id_usuario)
+                        );
+                        agregarBoton(
+                            controles,
+                            "Eliminar",
+                            "fas fa-trash-alt",
+                            "text-red-500 font-bold hover:underline text-xs uppercase",
+                            () => eliminarCuenta(cuenta.id_usuario)
+                        );
+                        acciones.appendChild(controles);
                     }
-                    body.innerHTML += `
-                        <tr class="border-b hover:bg-slate-50/50 transition">
-                            <td class="px-6 py-4 font-bold text-slate-700">${cuenta.nombre}</td>
-                            <td class="px-6 py-4 text-slate-600">${cuenta.email}</td>
-                            <td class="px-6 py-4"><span class="bg-ucc-plata text-ucc-azul px-2.5 py-1 rounded-lg text-xs font-bold uppercase">${nombreRol(cuenta.id_rol)}</span></td>
-                            <td class="px-6 py-4">${acciones}</td>
-                        </tr>`;
+                    body.appendChild(row);
                 });
             }
         }
     } catch (e) { 
-        body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-red-500 font-bold'>Error de red al conectar con el servidor</td></tr>"; 
+        mostrarTablaVacia(body, 5, "Error de red al conectar con el servidor", "p-10 text-center text-red-500 font-bold");
     }
 }
 
@@ -206,32 +318,42 @@ function prepararModal(tipo, editData = null) {
     if (tipo === 'reserva') {
         document.getElementById('modal-titulo').innerText = editData ? "Editar Reserva" : "Nueva Reserva";
         campos.innerHTML = `
-            ${editData ? `<input type="hidden" id="m-reserva-id" value="${editData.id_reserva}">` : ''}
+            ${editData ? '<input type="hidden" id="m-reserva-id">' : ''}
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Fecha</label>
-                <input type="date" id="m-fecha" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.fecha : ''}">
+                <input type="date" id="m-fecha" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-400 uppercase">Hora Inicio</label>
-                    <input type="time" id="m-inicio" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.hora_inicio : ''}">
+                    <input type="time" id="m-inicio" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-400 uppercase">Hora Fin</label>
-                    <input type="time" id="m-fin" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.hora_fin : ''}">
+                    <input type="time" id="m-fin" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
                 </div>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">ID del Salón</label>
-                <input type="number" id="m-salon" placeholder="ID del Salón" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.id_salon : ''}">
+                <input type="number" id="m-salon" placeholder="ID del Salón" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             ${user.id_rol != 3 ? `
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">ID del Docente</label>
-                <input type="number" id="m-docente" placeholder="ID del Docente" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.id_docente : ''}">
+                <input type="number" id="m-docente" placeholder="ID del Docente" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             ` : ''}
         `;
+        if (editData) {
+            document.getElementById('m-reserva-id').value = String(editData.id_reserva);
+            document.getElementById('m-fecha').value = editData.fecha;
+            document.getElementById('m-inicio').value = editData.hora_inicio;
+            document.getElementById('m-fin').value = editData.hora_fin;
+            document.getElementById('m-salon').value = String(editData.id_salon);
+            if (user.id_rol != 3) {
+                document.getElementById('m-docente').value = String(editData.id_docente);
+            }
+        }
         document.getElementById('modalMaestro').classList.remove('hidden');
         document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, editData ? 'editar_reserva' : 'reserva');
     } else if (tipo === 'salon') {
@@ -263,6 +385,10 @@ function prepararModal(tipo, editData = null) {
                 <label class="text-xs font-bold text-slate-400 uppercase">Correo Institucional</label>
                 <input type="email" id="m-corr-doc" placeholder="maria.perez@ucatolica.edu.co" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 uppercase">Contraseña inicial</label>
+                <input type="password" id="m-pass-doc" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Mínimo 12 caracteres" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+            </div>
         `;
         document.getElementById('modalMaestro').classList.remove('hidden');
         document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, 'docente');
@@ -283,7 +409,7 @@ function prepararModal(tipo, editData = null) {
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Contraseña</label>
-                <input type="password" id="m-pass-super" placeholder="Contraseña" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+                <input type="password" id="m-pass-super" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Mínimo 12 caracteres" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
         `;
         document.getElementById('modalMaestro').classList.remove('hidden');
@@ -300,16 +426,6 @@ function nombreRol(idRol) {
     return nombres[idRol] || "Sin rol";
 }
 
-function opcionesRol(idActual, puedeAsignarSuper) {
-    let html = "";
-    if (puedeAsignarSuper || idActual == 1) {
-        html += `<option value="1" ${idActual == 1 ? "selected" : ""}>Superadministrador</option>`;
-    }
-    html += `<option value="2" ${idActual == 2 ? "selected" : ""}>Administrador</option>`;
-    html += `<option value="3" ${idActual == 3 ? "selected" : ""}>Docente</option>`;
-    return html;
-}
-
 async function cambiarRol(idUsuario) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (parseInt(user.id_rol) !== 1) {
@@ -318,13 +434,10 @@ async function cambiarRol(idUsuario) {
     }
     const select = document.getElementById(`rol-${idUsuario}`);
     try {
-        const res = await fetch(`${API_URL}/usuarios/${idUsuario}`, {
+        const res = await apiFetch(`${API_URL}/usuarios/${idUsuario}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                id_rol: parseInt(select.value, 10),
-                solicitante_email: user.email
-            })
+            body: JSON.stringify({ id_rol: parseInt(select.value, 10) })
         });
         const result = await res.json();
         alert(result.message || "Rol actualizado");
@@ -342,7 +455,7 @@ async function eliminarCuenta(idUsuario) {
     }
     if (!confirm("¿Seguro que quieres eliminar esta cuenta?")) return;
     try {
-        const res = await fetch(`${API_URL}/usuarios/${idUsuario}?solicitante_email=${encodeURIComponent(user.email)}`, {
+        const res = await apiFetch(`${API_URL}/usuarios/${idUsuario}`, {
             method: "DELETE"
         });
         const result = await res.json();
@@ -357,20 +470,24 @@ function editarSalon(id, nombre, capacidad, ubicacion) {
     const campos = document.getElementById('campos-dinamicos');
     document.getElementById('modal-titulo').innerText = "Editar Salón";
     campos.innerHTML = `
-        <input type="hidden" id="m-id-edit" value="${id}">
+        <input type="hidden" id="m-id-edit">
         <div class="space-y-1">
             <label class="text-xs font-bold text-slate-400 uppercase">Nombre</label>
-            <input type="text" id="m-nom-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" value="${nombre}" required>
+            <input type="text" id="m-nom-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
         </div>
         <div class="space-y-1">
             <label class="text-xs font-bold text-slate-400 uppercase">Capacidad</label>
-            <input type="number" id="m-cap-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" value="${capacidad}" required>
+            <input type="number" id="m-cap-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
         </div>
         <div class="space-y-1">
             <label class="text-xs font-bold text-slate-400 uppercase">Ubicación</label>
-            <input type="text" id="m-ub-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" value="${ubicacion}" required>
+            <input type="text" id="m-ub-edit" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
         </div>
     `;
+    document.getElementById('m-id-edit').value = String(id);
+    document.getElementById('m-nom-edit').value = nombre;
+    document.getElementById('m-cap-edit').value = String(capacidad);
+    document.getElementById('m-ub-edit').value = ubicacion;
     document.getElementById('modalMaestro').classList.remove('hidden');
     document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, 'editar_salon');
 }
@@ -426,21 +543,21 @@ async function enviarFormulario(e, tipo) {
     } else if (tipo === 'docente') {
         data = {
             nombre: document.getElementById('m-nom-doc').value,
-            correo: document.getElementById('m-corr-doc').value
+            correo: document.getElementById('m-corr-doc').value,
+            password: document.getElementById('m-pass-doc').value
         };
     } else if (tipo === 'superadmin') {
         data = {
             nombre: document.getElementById('m-nom-super').value,
             email: document.getElementById('m-email-super').value,
             password: document.getElementById('m-pass-super').value,
-            id_rol: 1,
-            solicitante_email: user.email
+            id_rol: 1
         };
         endpoint = `${API_URL}/usuarios`;
     }
     
     try {
-        const res = await fetch(endpoint, { 
+        const res = await apiFetch(endpoint, {
             method: method, 
             headers: {'Content-Type': 'application/json'}, 
             body: JSON.stringify(data) 
@@ -457,7 +574,7 @@ async function enviarFormulario(e, tipo) {
 async function cancelarReserva(id) {
     if (confirm("¿Estás seguro de que deseas cancelar esta reserva? (US-26 / US-29)")) {
         try {
-            const res = await fetch(`${API_URL}/reservas/${id}`, {
+            const res = await apiFetch(`${API_URL}/reservas/${id}`, {
                 method: 'DELETE'
             });
             const result = await res.json();
@@ -482,7 +599,7 @@ async function initChart() {
     if (user.id_rol == 3) return; // Docente no tiene permisos del gráfico
 
     try {
-        const res = await fetch(`${API_URL}/reservas`);
+        const res = await apiFetch(`${API_URL}/reservas`);
         const result = await res.json();
         if (!res.ok || !result.data) return;
 
