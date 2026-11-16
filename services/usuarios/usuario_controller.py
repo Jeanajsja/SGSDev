@@ -1,50 +1,69 @@
-from typing import Optional
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from common.auth import requiere_rol, usuario_opcional
 from usuario_service import UsuarioService
 
 
 class UsuarioCreate(BaseModel):
-    nombre: str
-    email: str
-    password: str
-    id_rol: int
-    solicitante_email: Optional[str] = None
+    nombre: str = Field(min_length=1, max_length=100)
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=12, max_length=128)
+    id_rol: int = Field(default=3, ge=1, le=3)
 
 
 class UsuarioRolUpdate(BaseModel):
-    id_rol: int
-    solicitante_email: str
+    id_rol: int = Field(ge=1, le=3)
 
 
 def crear_router(service: UsuarioService) -> APIRouter:
     router = APIRouter(prefix="/api", tags=["usuarios"])
 
     @router.post("/usuarios")
-    def registrar(payload: UsuarioCreate):
-        res = service.crear_usuario(payload.model_dump())
+    def registrar(payload: UsuarioCreate, principal=Depends(usuario_opcional)):
+        if principal is None:
+            if payload.id_rol != 3:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="El registro público solo permite crear cuentas de docente",
+                )
+            solicitante_email = None
+        else:
+            if principal["id_rol"] not in {1, 2} or (
+                principal["id_rol"] == 2 and payload.id_rol != 3
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permisos para crear cuentas",
+                )
+            solicitante_email = principal["email"]
+
+        res = service.crear_usuario(payload.model_dump(), solicitante_email)
         if res and res.get("status") == "ok":
             return res
         return JSONResponse(content=res, status_code=400)
 
     @router.get("/usuarios")
-    def listar():
+    def listar(_principal=Depends(requiere_rol(1))):
         res = service.listar_usuarios()
         if res and res.get("status") == "ok":
             return res
         return JSONResponse(content=res, status_code=400)
 
     @router.put("/usuarios/{id_usuario}")
-    def cambiar_rol(id_usuario: int, payload: UsuarioRolUpdate):
-        res = service.cambiar_rol(id_usuario, payload.id_rol, payload.solicitante_email)
+    def cambiar_rol(
+        id_usuario: int,
+        payload: UsuarioRolUpdate,
+        principal=Depends(requiere_rol(1)),
+    ):
+        res = service.cambiar_rol(id_usuario, payload.id_rol, principal["email"])
         if res and res.get("status") == "ok":
             return res
         return JSONResponse(content=res, status_code=400)
 
     @router.delete("/usuarios/{id_usuario}")
-    def eliminar(id_usuario: int, solicitante_email: str = ""):
-        res = service.eliminar_cuenta(id_usuario, solicitante_email)
+    def eliminar(id_usuario: int, principal=Depends(requiere_rol(1))):
+        res = service.eliminar_cuenta(id_usuario, principal["email"])
         if res and res.get("status") == "ok":
             return res
         return JSONResponse(content=res, status_code=400)
