@@ -1,3 +1,5 @@
+import secrets
+
 from interfaces.docente_repository import IDocenteRepository
 from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
@@ -18,10 +20,10 @@ class DocenteService:
         if error:
             return error
         try:
-            password_defecto = self._password_hasher.hash("docente123")
-            self._repository.crear(data["nombre"], data["correo"], password_defecto)
+            password_segura = self._password_hasher.hash(secrets.token_urlsafe(32))
+            self._repository.crear(data["nombre"], data["correo"], password_segura)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
             return {"status": "error", "message": f"Error al registrar docente: {str(e)}"}
-        return {"status": "ok", "message": "Docente registrado con éxito. Contraseña por defecto: docente123"}
+        return {"status": "ok", "message": "Docente registrado con éxito"}
