@@ -55,15 +55,18 @@ datos (incluido el rol) y eliminaciones de usuarios; no guarda contraseñas ni
 sus hashes.
 La aplicación se conecta directamente a PostgreSQL mediante `DB_*`; no usa
 `SUPABASE_URL` ni `SUPABASE_KEY` para leer o guardar datos. Copia los valores de
-la conexión PostgreSQL del panel de Supabase. Si el entorno de despliegue no
-tiene IPv6, usa los valores **Host**, **Port** y **User** de **Session pooler**
-(incluido el usuario con el identificador del proyecto) en lugar de la conexión
-directa. Mantén `DB_SSLMODE=require` y nunca incluyas `.env` en Git.
+la conexión PostgreSQL del panel de Supabase. Para Render, usa **Transaction
+pooler** y copia exactamente **Host**, **Port** y **User** del panel (el usuario
+suele ser `postgres.<project-ref>`, no `postgres`). El puerto habitual del
+Transaction pooler es `6543`; no mezcles el host/usuario del pooler con la
+contraseña o usuario de una conexión distinta. Mantén `DB_SSLMODE=require` y
+nunca incluyas `.env` en Git.
 La migración inserta los roles iniciales; el reset local no requiere un archivo
 seed adicional.
 En Render, el Blueprint solicita `DB_HOST`, `DB_USER`, `DB_PASSWORD` y
-`JWT_SECRET` como variables privadas; configura `DB_HOST`, `DB_USER` y
-`DB_PASSWORD` con los datos del pooler cuando el runtime no tenga IPv6.
+`JWT_SECRET` como variables privadas; configura `DB_HOST`, `DB_PORT`, `DB_USER`
+y `DB_PASSWORD` con los datos del Transaction pooler. Usa la contraseña de
+PostgreSQL de Supabase, no la clave `anon` ni `service_role`.
 
 ## SOLID
 
