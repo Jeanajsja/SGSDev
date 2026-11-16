@@ -23,35 +23,41 @@ services:
   login:
     build: ./services/login
     container_name: sgsdev-ms-login
+    env_file: .env
     ports:
       - "5001:5001"
 
   salones:
     build: ./services/salones
     container_name: sgsdev-ms-salones
+    env_file: .env
     ports:
       - "5002:5002"
 
   docentes:
     build: ./services/docentes
     container_name: sgsdev-ms-docentes
+    env_file: .env
     ports:
       - "5003:5003"
 
   roles:
     build: ./services/roles
     container_name: sgsdev-ms-roles
+    env_file: .env
     ports:
       - "5004:5004"
 
   usuarios:
     build: ./services/usuarios
     container_name: sgsdev-ms-usuarios
+    env_file: .env
     ports:
       - "5005:5005"
 
   reservas:
     build: ./services/reservas
     container_name: sgsdev-ms-reservas
+    env_file: .env
     ports:
       - "5006:5006"

@@ -1,19 +1,23 @@
+import os
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 def get_connection():
-    # Conexión ultra-robusta diseñada para saltar:
-    # 1. Bloqueos de firewall locales en puerto 5432 (usando puerto alternativo 6543)
-    # 2. Errores de DNS locales (utilizando la IP directa de AWS-1 Pooler)
-    # 3. Fallas de enrutamiento IPv6 de tu ISP (forzando IPv4)
+    required = ("DB_HOST", "DB_USER", "DB_PASSWORD")
+    missing = [key for key in required if not os.getenv(key)]
+    if missing:
+        raise RuntimeError(
+            "Faltan variables de conexión a Supabase: " + ", ".join(missing)
+        )
+
     params = {
-        "host": "aws-1-us-east-2.pooler.supabase.com",
-        "hostaddr": "13.58.13.125",
-        "port": 6543,
-        "database": "postgres",
-        "user": "postgres.qgwpttpknrevnbdsjnrx",
-        "password": "Sgs_Proyecto_2026",
-        "sslmode": "require",
+        "host": os.environ["DB_HOST"],
+        "port": int(os.getenv("DB_PORT", "6543")),
+        "database": os.getenv("DB_NAME", "postgres"),
+        "user": os.environ["DB_USER"],
+        "password": os.environ["DB_PASSWORD"],
+        "sslmode": os.getenv("DB_SSLMODE", "require"),
         "connect_timeout": 5
     }
     
