@@ -67,6 +67,9 @@ En Render, el Blueprint solicita `DB_HOST`, `DB_USER`, `DB_PASSWORD` y
 `JWT_SECRET` como variables privadas; configura `DB_HOST`, `DB_PORT`, `DB_USER`
 y `DB_PASSWORD` con los datos del Transaction pooler. Usa la contraseña de
 PostgreSQL de Supabase, no la clave `anon` ni `service_role`.
+El usuario configurado para este proyecto en `render.yaml` incluye su
+identificador (`postgres.qgwpttpknrevnbdsjnrx`); si conectas otro proyecto,
+cámbialo por el usuario exacto que indica el panel de Supabase.
 
 ## SOLID
 
