@@ -35,6 +35,9 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q .
 
+      - name: Prepare environment for Docker Compose validation
+        run: cp .env.example .env
+
       - name: Validate Docker Compose
         run: docker compose config --quiet
 
