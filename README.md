@@ -23,13 +23,31 @@ Para levantar todo:
 
 ```
 cp -n .env.example .env
-# Completa DB_HOST, DB_USER y DB_PASSWORD con las credenciales de tu proyecto Supabase.
+# Completa DB_* con las credenciales de tu proyecto Supabase.
+# Genera JWT_SECRET con `openssl rand -hex 32` y guárdalo solo en .env.
+# SUPERADMIN_PASSWORD se usa solo para aprovisionar la cuenta ancla si aún no existe.
 # Vincula el proyecto con: supabase link --project-ref <project-ref>
 supabase db push
 docker compose up --build
 ```
 
 La app entra por http://localhost:8080
+
+El registro público solo crea cuentas de docente. La creación y administración de
+otros roles requiere autenticación y permisos en el servidor. Las sesiones usan
+tokens Bearer firmados y de corta duración. No compartas ni subas `.env`.
+
+Si la cuenta ancla ya existe, el arranque no cambia su contraseña ni sus datos.
+Para rotar la contraseña de esa cuenta, define temporalmente `SUPERADMIN_PASSWORD`
+en `.env`, ejecuta `docker compose run --rm login python reset_superadmin_password.py`
+y elimina esa variable de `.env` al terminar. Para el primer aprovisionamiento,
+la misma variable crea la cuenta si no existe; también debe eliminarse después.
+
+El manifiesto Kubernetes con credenciales fue retirado porque estaba versionado.
+El script `k8s/desplegar.ps1` crea el Secret desde `.env`; nunca publiques ese
+archivo. Como la credencial anterior estuvo en el historial Git, rótala en Supabase
+y actualiza `DB_PASSWORD` antes de desplegar. La eliminación del manifiesto no
+borra sus versiones anteriores del historial Git.
 
 Las migraciones de `supabase/migrations/` crean las tablas de la aplicación y
 `historial_usuario`. Este historial registra automáticamente altas, cambios de
