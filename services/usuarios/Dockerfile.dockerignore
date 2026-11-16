@@ -1,0 +1,6 @@
+**
+!services/
+!services/usuarios/
+!services/usuarios/**
+!services/common/
+!services/common/**
