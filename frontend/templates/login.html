@@ -38,20 +38,17 @@
         </div>
 
         <form id="loginForm" class="space-y-4">
-            <input type="email" id="l-email" placeholder="Correo electrónico" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
-            <input type="password" id="l-pass" placeholder="Contraseña" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
+            <input type="email" id="l-email" autocomplete="username" placeholder="Correo electrónico" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
+            <input type="password" id="l-pass" autocomplete="current-password" placeholder="Contraseña" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
             <button type="submit" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Entrar al Sistema</button>
             <p class="text-center text-xs text-ucc-muted">¿No tienes cuenta? <a href="javascript:toggle()" class="text-ucc-azul font-bold underline">Regístrate ahora</a></p>
         </form>
 
         <form id="registerForm" class="hidden space-y-4">
-            <input type="text" id="r-nombre" placeholder="Nombre completo" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
-            <input type="email" id="r-email" placeholder="Correo electrónico" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
-            <input type="password" id="r-pass" placeholder="Crear contraseña" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
-            <select id="r-rol" class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none bg-white">
-                <option value="2">Administrador</option>
-                <option value="3">Docente</option>
-            </select>
+            <input type="text" id="r-nombre" maxlength="100" placeholder="Nombre completo" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
+            <input type="email" id="r-email" maxlength="255" autocomplete="username" placeholder="Correo electrónico" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
+            <input type="password" id="r-pass" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Contraseña (mínimo 12 caracteres)" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
+            <p class="text-center text-xs text-ucc-muted">El registro público crea cuentas de docente.</p>
             <button type="submit" class="w-full bg-ucc-dorado text-ucc-navy font-bold py-4 rounded-2xl hover:bg-ucc-oro shadow-xl transition transform active:scale-95">Crear Cuenta Nueva</button>
             <p class="text-center text-xs text-ucc-muted">¿Ya tienes cuenta? <a href="javascript:toggle()" class="text-ucc-azul font-bold underline">Inicia sesión</a></p>
         </form>
@@ -65,7 +62,7 @@
             document.getElementById('registerForm').classList.toggle('hidden');
             const isReg = !document.getElementById('registerForm').classList.contains('hidden');
             document.getElementById('title').innerText = isReg ? "Nueva Cuenta" : "Bienvenido";
-            document.getElementById('subtitle').innerText = isReg ? "Crea tu perfil con un rol" : "Universidad Católica de Colombia";
+            document.getElementById('subtitle').innerText = isReg ? "Crea tu perfil de docente" : "Universidad Católica de Colombia";
         }
 
         document.getElementById('loginForm').onsubmit = async (e) => {
@@ -80,7 +77,8 @@
                     })
                 });
                 const result = await res.json();
-                if (res.ok) {
+                if (res.ok && result.access_token && result.user) {
+                    sessionStorage.setItem('access_token', result.access_token);
                     sessionStorage.setItem('user', JSON.stringify(result.user));
                     window.location.href = 'index.html';
                 } else {
@@ -97,7 +95,7 @@
         nombre: document.getElementById('r-nombre').value,
         email: document.getElementById('r-email').value,
         password: document.getElementById('r-pass').value,
-        id_rol: parseInt(document.getElementById('r-rol').value, 10)
+        id_rol: 3
     };
     try {
         const res = await fetch(`${API}/usuarios`, {
