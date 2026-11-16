@@ -43,7 +43,8 @@ class MemoryReservaRepository(IReservaRepository):
                 r["hora_fin"] = hora_fin
                 r["id_salon"] = id_salon
                 r["id_docente"] = id_docente
-                return
+                return True
+        return False
 
     def cancelar(self, id_reserva):
         for r in self._reservas:

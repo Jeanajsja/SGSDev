@@ -11,6 +11,12 @@ class FakeReservaRepository:
         ]
         self.cancelled = []
 
+    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin):
+        return False
+
+    def crear(self, fecha, hora_inicio, hora_fin, id_docente, id_salon):
+        pass
+
     def listar_detalle(self):
         return self.reservas
 
@@ -40,6 +46,27 @@ class TestReservaServiceAuthorization(unittest.TestCase):
         result = self.service.cancelar_reserva(10, {"id_usuario": 7, "id_rol": 3})
         self.assertEqual(result["status"], "ok")
         self.assertEqual(self.repository.cancelled, [10])
+
+    def test_database_error_checking_availability_does_not_create_reservation(self):
+        class UnavailableRepository(FakeReservaRepository):
+            def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin):
+                raise ConnectionError("database unavailable")
+
+            def crear(self, fecha, hora_inicio, hora_fin, id_docente, id_salon):
+                raise AssertionError("cannot reserve without checking availability")
+
+        service = ReservaService(UnavailableRepository())
+        result = service.crear_reserva(
+            {
+                "fecha": "2026-12-01",
+                "hora_inicio": "09:00",
+                "hora_fin": "10:00",
+                "id_docente": 7,
+                "id_salon": 2,
+            }
+        )
+
+        self.assertEqual(result["status"], "error")
 
 
 if __name__ == "__main__":

@@ -7,3 +7,15 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: DB_HOST
+        value: aws-1-us-east-2.pooler.supabase.com
+      - key: DB_PORT
+        value: "6543"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        value: postgres.qgwpttpknrevnbdsjnrx
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require

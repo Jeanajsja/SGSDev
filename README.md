@@ -23,7 +23,7 @@ Para levantar todo:
 
 ```
 cp -n .env.example .env
-# Completa DB_* con las credenciales de tu proyecto Supabase.
+# Completa DB_* con las credenciales PostgreSQL de tu proyecto Supabase.
 # Genera JWT_SECRET con `openssl rand -hex 32` y guárdalo solo en .env.
 # SUPERADMIN_PASSWORD se usa solo para aprovisionar la cuenta ancla si aún no existe.
 # Vincula el proyecto con: supabase link --project-ref <project-ref>
@@ -53,9 +53,14 @@ Las migraciones de `supabase/migrations/` crean las tablas de la aplicación y
 `historial_usuario`. Este historial registra automáticamente altas, cambios de
 datos (incluido el rol) y eliminaciones de usuarios; no guarda contraseñas ni
 sus hashes.
-La conexión a PostgreSQL usa las variables `DB_*` del archivo `.env`; nunca
-incluyas ese archivo en Git. La conexión directa requiere IPv6; si el entorno
-no lo soporta, usa el session pooler/IPv4 del panel de Supabase.
+Todos los servicios guardan y consultan los datos en PostgreSQL de Supabase
+mediante las variables `DB_*`; no usan almacenamiento en memoria en producción.
+Para Render usa los datos de **Transaction pooler** del panel de Supabase:
+`DB_HOST`, puerto `6543`, `DB_USER` exacto del panel (incluye el identificador
+del proyecto), `DB_PASSWORD` de PostgreSQL, `DB_NAME=postgres` y
+`DB_SSLMODE=require`. En local puedes usar la conexión directa (`5432`, usuario
+`postgres`) si tu red permite IPv6. Nunca subas `.env` a Git.
+Aplica el esquema con `supabase db push` antes de usar la aplicación.
 
 ## SOLID
 
