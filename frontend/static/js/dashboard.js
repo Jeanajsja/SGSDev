@@ -19,21 +19,6 @@ async function apiFetch(url, options = {}) {
     return response;
 }
 
-async function leerRespuestaApi(response) {
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-        throw new Error("El servidor devolvió una respuesta no válida.");
-    }
-
-    const result = await response.json();
-    if (!response.ok || result?.status === "error") {
-        throw new Error(
-            result?.message || result?.detail || "La operación no se pudo completar."
-        );
-    }
-    return result;
-}
-
 function agregarCelda(fila, texto, clase = "") {
     const celda = document.createElement('td');
     celda.className = clase;
@@ -163,7 +148,7 @@ async function cargarTabla(tipo) {
         }
         
         const res = await apiFetch(fetchUrl);
-        const result = await leerRespuestaApi(res);
+        const result = await res.json();
         body.replaceChildren();
 
         if (tipo === 'reservas' || tipo === 'reservas_globales') {
@@ -320,13 +305,8 @@ async function cargarTabla(tipo) {
                 });
             }
         }
-    } catch (e) {
-        mostrarTablaVacia(
-            body,
-            5,
-            e.message || "No fue posible cargar los datos.",
-            "p-10 text-center text-red-500 font-bold"
-        );
+    } catch (e) { 
+        mostrarTablaVacia(body, 5, "Error de red al conectar con el servidor", "p-10 text-center text-red-500 font-bold");
     }
 }
 
@@ -459,11 +439,11 @@ async function cambiarRol(idUsuario) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id_rol: parseInt(select.value, 10) })
         });
-        const result = await leerRespuestaApi(res);
+        const result = await res.json();
         alert(result.message || "Rol actualizado");
         mostrarSeccion(seccionActual);
     } catch (e) {
-        alert(e.message || "Error al cambiar el rol");
+        alert("Error al cambiar el rol");
     }
 }
 
@@ -478,11 +458,11 @@ async function eliminarCuenta(idUsuario) {
         const res = await apiFetch(`${API_URL}/usuarios/${idUsuario}`, {
             method: "DELETE"
         });
-        const result = await leerRespuestaApi(res);
+        const result = await res.json();
         alert(result.message || "Cuenta eliminada");
         mostrarSeccion(seccionActual);
     } catch (e) {
-        alert(e.message || "Error al eliminar la cuenta");
+        alert("Error al eliminar la cuenta");
     }
 }
 
@@ -582,12 +562,12 @@ async function enviarFormulario(e, tipo) {
             headers: {'Content-Type': 'application/json'}, 
             body: JSON.stringify(data) 
         });
-        const result = await leerRespuestaApi(res);
+        const result = await res.json();
         alert(result.message || "Operación realizada con éxito");
         cerrarModal();
         mostrarSeccion(seccionActual);
     } catch (err) {
-        alert(err.message || "Error al enviar el formulario.");
+        alert("Error al enviar el formulario.");
     }
 }
 
@@ -597,11 +577,15 @@ async function cancelarReserva(id) {
             const res = await apiFetch(`${API_URL}/reservas/${id}`, {
                 method: 'DELETE'
             });
-            await leerRespuestaApi(res);
-            alert("Reserva cancelada correctamente");
-            mostrarSeccion(seccionActual);
+            const result = await res.json();
+            if (res.ok) {
+                alert("Reserva cancelada correctamente");
+                mostrarSeccion(seccionActual);
+            } else {
+                alert("Error: " + result.message);
+            }
         } catch (e) {
-            alert(e.message || "Error de conexión al intentar cancelar la reserva");
+            alert("Error de conexión al intentar cancelar la reserva");
         }
     }
 }
@@ -616,8 +600,8 @@ async function initChart() {
 
     try {
         const res = await apiFetch(`${API_URL}/reservas`);
-        const result = await leerRespuestaApi(res);
-        if (!result.data) return;
+        const result = await res.json();
+        if (!res.ok || !result.data) return;
 
         // Agrupar reservas por salón
         const salonesMap = {};

@@ -23,7 +23,7 @@ Para levantar todo:
 
 ```
 cp -n .env.example .env
-# Completa DB_* con los datos PostgreSQL de Supabase (no con la URL/key de la API).
+# Completa DB_* con las credenciales de tu proyecto Supabase.
 # Genera JWT_SECRET con `openssl rand -hex 32` y guárdalo solo en .env.
 # SUPERADMIN_PASSWORD se usa solo para aprovisionar la cuenta ancla si aún no existe.
 # Vincula el proyecto con: supabase link --project-ref <project-ref>
@@ -53,23 +53,9 @@ Las migraciones de `supabase/migrations/` crean las tablas de la aplicación y
 `historial_usuario`. Este historial registra automáticamente altas, cambios de
 datos (incluido el rol) y eliminaciones de usuarios; no guarda contraseñas ni
 sus hashes.
-La aplicación se conecta directamente a PostgreSQL mediante `DB_*`; no usa
-`SUPABASE_URL` ni `SUPABASE_KEY` para leer o guardar datos. Copia los valores de
-la conexión PostgreSQL del panel de Supabase. Para Render, usa **Transaction
-pooler** y copia exactamente **Host**, **Port** y **User** del panel (el usuario
-suele ser `postgres.<project-ref>`, no `postgres`). El puerto habitual del
-Transaction pooler es `6543`; no mezcles el host/usuario del pooler con la
-contraseña o usuario de una conexión distinta. Mantén `DB_SSLMODE=require` y
-nunca incluyas `.env` en Git.
-La migración inserta los roles iniciales; el reset local no requiere un archivo
-seed adicional.
-En Render, el Blueprint solicita `DB_HOST`, `DB_USER`, `DB_PASSWORD` y
-`JWT_SECRET` como variables privadas; configura `DB_HOST`, `DB_PORT`, `DB_USER`
-y `DB_PASSWORD` con los datos del Transaction pooler. Usa la contraseña de
-PostgreSQL de Supabase, no la clave `anon` ni `service_role`.
-El usuario configurado para este proyecto en `render.yaml` incluye su
-identificador (`postgres.qgwpttpknrevnbdsjnrx`); si conectas otro proyecto,
-cámbialo por el usuario exacto que indica el panel de Supabase.
+La conexión a PostgreSQL usa las variables `DB_*` del archivo `.env`; nunca
+incluyas ese archivo en Git. La conexión directa requiere IPv6; si el entorno
+no lo soporta, usa el session pooler/IPv4 del panel de Supabase.
 
 ## SOLID
 

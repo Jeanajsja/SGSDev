@@ -9,7 +9,7 @@ class PostgresRolRepository(IRolRepository):
     def listar(self):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            return []
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT * FROM Rol")

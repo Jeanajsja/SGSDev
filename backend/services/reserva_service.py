@@ -25,11 +25,10 @@ class ReservaService:
             except Exception:
                 h_fin = "22:00"
 
+        if self._repository.existe_cruce(data["id_salon"], data["fecha"], h_ini, h_fin):
+            return self._suscribir_a_cola(data["id_salon"], data["id_docente"])
+
         try:
-            if self._repository.existe_cruce(
-                data["id_salon"], data["fecha"], h_ini, h_fin
-            ):
-                return self._suscribir_a_cola(data["id_salon"], data["id_docente"])
             self._repository.crear(data["fecha"], h_ini, h_fin, data["id_docente"], data["id_salon"])
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
@@ -39,7 +38,7 @@ class ReservaService:
 
     def actualizar_reserva(self, id_reserva, data):
         try:
-            filas = self._repository.actualizar(
+            self._repository.actualizar(
                 id_reserva,
                 data["fecha"],
                 data["hora_inicio"],
@@ -51,16 +50,13 @@ class ReservaService:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
             return {"status": "error", "message": f"Error al actualizar reserva: {str(e)}"}
-        if not filas:
-            return {"status": "error", "message": "No se encontró la reserva para actualizar"}
         return {"status": "ok", "message": "Reserva actualizada con éxito"}
 
     def cancelar_reserva(self, id_reserva):
         try:
             id_salon = self._repository.cancelar(id_reserva)
-            if id_salon is None:
-                return {"status": "error", "message": "No se encontró la reserva"}
-            self._repository.promover_siguiente_cola(id_salon)
+            if id_salon is not None:
+                self._repository.promover_siguiente_cola(id_salon)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:

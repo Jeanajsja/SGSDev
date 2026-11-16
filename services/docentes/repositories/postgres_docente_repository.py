@@ -9,7 +9,7 @@ class PostgresDocenteRepository(IDocenteRepository):
     def listar(self):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            return []
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
@@ -21,6 +21,8 @@ class PostgresDocenteRepository(IDocenteRepository):
                 """
             )
             return cursor.fetchall()
+        except Exception:
+            return []
         finally:
             conn.close()
 
