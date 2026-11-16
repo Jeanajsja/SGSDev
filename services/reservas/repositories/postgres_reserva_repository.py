@@ -1,3 +1,4 @@
+import psycopg2
 from psycopg2.extras import RealDictCursor
 from interfaces.reserva_repository import IReservaRepository
 
@@ -29,7 +30,7 @@ class PostgresReservaRepository(IReservaRepository):
     def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin):
         conn = self._connection_factory()
         if conn is None:
-            return False
+            raise ConnectionError("No se pudo conectar a la base de datos")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
@@ -40,8 +41,10 @@ class PostgresReservaRepository(IReservaRepository):
                 (id_salon, fecha, hora_fin, hora_inicio),
             )
             return cursor.fetchone() is not None
-        except Exception:
-            return False
+        except psycopg2.Error as error:
+            raise ConnectionError(
+                "No se pudo comprobar la disponibilidad del salón"
+            ) from error
         finally:
             conn.close()
 
@@ -77,6 +80,7 @@ class PostgresReservaRepository(IReservaRepository):
                 (fecha, hora_inicio, hora_fin, id_salon, id_docente, id_reserva),
             )
             conn.commit()
+            return cursor.rowcount
         finally:
             conn.close()
 
