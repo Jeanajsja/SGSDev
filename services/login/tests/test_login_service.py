@@ -1,4 +1,7 @@
+import os
 import unittest
+from unittest.mock import patch
+
 from interfaces.password_hasher import IPasswordHasher
 from login_service import LoginService
 from repositories.memory_login_repository import MemoryLoginRepository
@@ -24,9 +27,12 @@ class TestLoginService(unittest.TestCase):
         self.service = LoginService(self.repo, FakeHasher())
 
     def test_login_ok(self):
-        res = self.service.login("ana@gmail.com", "123")
+        with patch.dict(os.environ, {"JWT_SECRET": "test-secret-" * 6}):
+            res = self.service.login("ana@gmail.com", "123")
         self.assertEqual(res["status"], "ok")
         self.assertNotIn("password", res["user"])
+        self.assertTrue(res["access_token"])
+        self.assertEqual(res["token_type"], "bearer")
 
     def test_login_malo(self):
         res = self.service.login("ana@gmail.com", "otra")
