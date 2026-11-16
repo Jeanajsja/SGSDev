@@ -1,6 +1,7 @@
 from interfaces.login_repository import ILoginRepository
 from interfaces.password_hasher import IPasswordHasher
 from models.usuario import Usuario
+from common.auth import crear_token_acceso
 
 
 class LoginService:
@@ -17,5 +18,11 @@ class LoginService:
             return {"status": "error", "message": f"Error en el servidor: {str(e)}"}
 
         if user and self._password_hasher.verificar(password, user["password"]):
-            return {"status": "ok", "user": Usuario.from_row(user).to_public_dict()}
+            usuario_publico = Usuario.from_row(user).to_public_dict()
+            return {
+                "status": "ok",
+                "user": usuario_publico,
+                "access_token": crear_token_acceso(usuario_publico),
+                "token_type": "bearer",
+            }
         return {"status": "error", "message": "Credenciales inválidas"}
