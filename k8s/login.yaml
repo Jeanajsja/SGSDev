@@ -22,6 +22,11 @@ spec:
           envFrom:
             - secretRef:
                 name: sgsdev-db
+          env:
+            - name: SUPABASE_URL
+              value: ""
+            - name: SUPABASE_KEY
+              value: ""
           readinessProbe:
             httpGet:
               path: /health
