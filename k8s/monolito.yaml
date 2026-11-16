@@ -19,9 +19,6 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
-          envFrom:
-            - secretRef:
-                name: sgsdev-db
           readinessProbe:
             httpGet:
               path: /
