@@ -12,7 +12,7 @@ class UsuarioService:
         self._password_hasher = password_hasher
         self._email_validator = email_validator
 
-    def crear_usuario(self, data):
+    def crear_usuario(self, data, solicitante_email=None):
         error = self._email_validator.validar(data.get("email", ""))
         if error:
             return error
@@ -20,9 +20,14 @@ class UsuarioService:
             id_rol = int(data["id_rol"])
         except (TypeError, ValueError):
             return {"status": "error", "message": "El rol no es válido"}
+        if id_rol not in ROLES_VALIDOS:
+            return {"status": "error", "message": "El rol no es válido"}
         if id_rol == ROL_SUPERADMIN:
-            solicitante = (data.get("solicitante_email") or "").lower()
-            if solicitante != SUPERADMIN_ANCLA:
+            solicitante = self._exigir_superadmin(solicitante_email)
+            if (
+                isinstance(solicitante, dict)
+                and solicitante.get("status") == "error"
+            ) or not self._es_ancla(solicitante):
                 return {
                     "status": "error",
                     "message": "Solo el superadministrador ancla puede crear otro superadministrador",
