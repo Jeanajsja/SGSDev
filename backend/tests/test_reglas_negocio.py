@@ -156,5 +156,18 @@ class TestCargaDocente(unittest.TestCase):
 
 
 
+class TestPasswordYRegistro(unittest.TestCase):
+    def setUp(self):
+        self.repo = MemoryUsuarioRepository()
+        self.service = UsuarioService(self.repo, FakeHasher(), FakeEmailOk())
+        self.repo.crear("Luisa", ANCLA, f"hash:{CLAVE}", 1)
+
+    def test_password_minimo_8_letras_y_numeros(self):
+        self.assertIsNotNone(validar_password("abc123"))
+        self.assertIsNotNone(validar_password("abcdefgh"))
+        self.assertIsNotNone(validar_password("12345678"))
+        self.assertIsNone(validar_password(CLAVE))
+
+
 if __name__ == "__main__":
     unittest.main()

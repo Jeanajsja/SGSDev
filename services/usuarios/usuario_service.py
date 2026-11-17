@@ -1,8 +1,10 @@
 from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.usuario_repository import IUsuarioRepository
-from superadmin_ancla import ROL_SUPERADMIN, SUPERADMIN_ANCLA
+from password_policy import validar_password
 
+SUPERADMIN_ANCLA = "lfpaez30@ucatolica.edu.co"
+ROL_SUPERADMIN = 1
 ROLES_VALIDOS = {1, 2, 3}
 
 
@@ -16,6 +18,9 @@ class UsuarioService:
         error = self._email_validator.validar(data.get("email", ""))
         if error:
             return error
+        error_clave = validar_password(data.get("password"))
+        if error_clave:
+            return error_clave
         try:
             id_rol = int(data["id_rol"])
         except (TypeError, ValueError):

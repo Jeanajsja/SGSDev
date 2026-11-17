@@ -84,7 +84,7 @@ class TestL_Sustitucion(unittest.TestCase):
 
     def test_memory_repo_reemplaza_postgres_en_login(self):
         repo = MemoryUsuarioRepository()
-        repo.crear("Ana", "ana@gmail.com", "hash:123", 1)
+        repo.crear("Ana", "ana@gmail.com", "hash:123", 1, "activo")
         service = LoginService(repo, FakeVerifier())
         res = service.login("ana@gmail.com", "123")
         self.assertEqual(res["status"], "ok")
@@ -94,20 +94,22 @@ class TestL_Sustitucion(unittest.TestCase):
 class TestI_Segregacion(unittest.TestCase):
     def test_registro_no_pide_verificar(self):
         service = UsuarioService(MemoryUsuarioRepository(), FakeHasher(), FakeEmailOk())
-        res = service.crear_usuario({"nombre": "Ana", "email": "ana@gmail.com", "password": "123", "id_rol": 2})
+        res = service.crear_usuario(
+            {"nombre": "Ana", "email": "ana@gmail.com", "password": "Clave1234", "id_rol": 2}
+        )
         self.assertEqual(res["status"], "ok")
 
     def test_solo_el_ancla_crea_superadmin(self):
         service = UsuarioService(MemoryUsuarioRepository(), FakeHasher(), FakeEmailOk())
         denegado = service.crear_usuario(
-            {"nombre": "Otra", "email": "otra@ucatolica.edu.co", "password": "123", "id_rol": 1}
+            {"nombre": "Otra", "email": "otra@ucatolica.edu.co", "password": "Clave1234", "id_rol": 1}
         )
         self.assertEqual(denegado["status"], "error")
         ok = service.crear_usuario(
             {
                 "nombre": "Otra",
                 "email": "otra@ucatolica.edu.co",
-                "password": "123",
+                "password": "Clave1234",
                 "id_rol": 1,
                 "solicitante_email": "lfpaez30@ucatolica.edu.co",
             }
@@ -116,9 +118,9 @@ class TestI_Segregacion(unittest.TestCase):
 
     def test_superadmin_cambia_rol_y_elimina(self):
         repo = MemoryUsuarioRepository()
-        repo.crear("Luisa", "lfpaez30@ucatolica.edu.co", "hash:123", 1)
+        repo.crear("Luisa", "lfpaez30@ucatolica.edu.co", "hash:123", 1, "activo")
         service = UsuarioService(repo, FakeHasher(), FakeEmailOk())
-        service.crear_usuario({"nombre": "Ana", "email": "ana@gmail.com", "password": "123", "id_rol": 3})
+        service.crear_usuario({"nombre": "Ana", "email": "ana@gmail.com", "password": "Clave1234", "id_rol": 3})
         ana = repo.buscar_por_email("ana@gmail.com")
         denegado = service.cambiar_rol(ana["id_usuario"], 2, "ana@gmail.com")
         self.assertEqual(denegado["status"], "error")
@@ -132,7 +134,7 @@ class TestI_Segregacion(unittest.TestCase):
 
     def test_login_no_pide_hash(self):
         repo = MemoryUsuarioRepository()
-        repo.crear("Ana", "ana@gmail.com", "hash:123", 1)
+        repo.crear("Ana", "ana@gmail.com", "hash:123", 1, "activo")
         service = LoginService(repo, FakeVerifier())
         self.assertEqual(service.login("ana@gmail.com", "123")["status"], "ok")
 
@@ -140,11 +142,13 @@ class TestI_Segregacion(unittest.TestCase):
 class TestD_Inversion(unittest.TestCase):
     def test_inyecto_validador_y_hasher_falsos(self):
         service = UsuarioService(MemoryUsuarioRepository(), FakeHasher(), FakeEmailFail())
-        res = service.crear_usuario({"nombre": "Ana", "email": "ana@gmal.com", "password": "123", "id_rol": 1})
+        res = service.crear_usuario(
+            {"nombre": "Ana", "email": "ana@gmal.com", "password": "Clave1234", "id_rol": 1}
+        )
         self.assertEqual(res["status"], "error")
 
     def test_docente_usa_el_validador_inyectado(self):
-        service = DocenteService(MemoryDocenteRepository(), FakeHasher(), FakeEmailOk())
+        service = DocenteService(MemoryDocenteRepository(), FakeEmailOk())
         res = service.crear({"nombre": "Maria", "correo": "maria@gmail.com"})
         self.assertEqual(res["status"], "ok")
         self.assertEqual(len(service.listar()), 1)
