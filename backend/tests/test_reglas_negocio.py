@@ -155,12 +155,11 @@ class TestCargaDocente(unittest.TestCase):
         self.assertIn("46 horas", exceso["message"])
 
 
-
 class TestPasswordYRegistro(unittest.TestCase):
     def setUp(self):
         self.repo = MemoryUsuarioRepository()
         self.service = UsuarioService(self.repo, FakeHasher(), FakeEmailOk())
-        self.repo.crear("Luisa", ANCLA, f"hash:{CLAVE}", 1)
+        self.repo.crear("Luisa", ANCLA, f"hash:{CLAVE}", 1, "activo")
 
     def test_password_minimo_8_letras_y_numeros(self):
         self.assertIsNotNone(validar_password("abc123"))
@@ -168,6 +167,13 @@ class TestPasswordYRegistro(unittest.TestCase):
         self.assertIsNotNone(validar_password("12345678"))
         self.assertIsNone(validar_password(CLAVE))
 
+    def test_restablecer_password(self):
+        res = self.service.restablecer_password(ANCLA, "Nueva4567")
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(self.repo.buscar_por_email(ANCLA)["password"], "hash:Nueva4567")
+        malo = self.service.restablecer_password(ANCLA, "corta1")
+        self.assertEqual(malo["status"], "error")
 
+    
 if __name__ == "__main__":
     unittest.main()

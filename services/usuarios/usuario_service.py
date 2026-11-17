@@ -46,6 +46,23 @@ class UsuarioService:
             return {"status": "error", "message": f"El correo ya existe o hay un error: {str(e)}"}
         return {"status": "ok", "message": "Cuenta creada exitosamente"}
 
+
+    def restablecer_password(self, email, nueva_password):
+        error_clave = validar_password(nueva_password)
+        if error_clave:
+            return error_clave
+        usuario = self._repository.buscar_por_email(email)
+        if not usuario:
+            return {"status": "error", "message": "La cuenta no existe"}
+        try:
+            password_segura = self._password_hasher.hash(nueva_password)
+            self._repository.actualizar_password(email, password_segura)
+        except ConnectionError:
+            return {"status": "error", "message": "Error de conexión"}
+        except Exception as e:
+            return {"status": "error", "message": f"No se pudo restablecer la contraseña: {str(e)}"}
+        return {"status": "ok", "message": "Contraseña restablecida"}
+
     def listar_usuarios(self):
         try:
             return {"status": "ok", "data": [self._publico(u) for u in self._repository.listar()]}

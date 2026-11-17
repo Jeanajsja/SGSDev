@@ -7,8 +7,8 @@ class MemoryUsuarioRepository(IUsuarioRepository, ILoginRepository):
         self._usuarios = []
         self._next_id = 1
 
-    def crear(self, nombre, email, password_hash, id_rol):
-        if any(u["email"] == email for u in self._usuarios):
+    def crear(self, nombre, email, password_hash, id_rol, estado="activo"):
+        if any(u["email"].lower() == (email or "").lower() for u in self._usuarios):
             raise Exception("duplicate key")
         self._usuarios.append(
             {
@@ -17,6 +17,7 @@ class MemoryUsuarioRepository(IUsuarioRepository, ILoginRepository):
                 "email": email,
                 "password": password_hash,
                 "id_rol": id_rol,
+                "estado": estado or "activo",
             }
         )
         self._next_id += 1
@@ -35,6 +36,14 @@ class MemoryUsuarioRepository(IUsuarioRepository, ILoginRepository):
         for usuario in self._usuarios:
             if usuario["id_usuario"] == id_usuario:
                 usuario["id_rol"] = id_rol
+                return True
+        return False
+
+    def actualizar_password(self, email, password_hash):
+        buscado = (email or "").lower()
+        for usuario in self._usuarios:
+            if usuario["email"].lower() == buscado:
+                usuario["password"] = password_hash
                 return True
         return False
 
