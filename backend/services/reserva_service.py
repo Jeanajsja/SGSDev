@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from interfaces.reserva_repository import IReservaRepository
 
+HORAS_MINIMAS_CANCELACION = 8
+
 
 class ReservaService:
 
@@ -60,7 +62,21 @@ class ReservaService:
             return {"status": "error", "message": "No se encontró la reserva para actualizar"}
         return {"status": "ok", "message": "Reserva actualizada con éxito"}
 
-    def cancelar_reserva(self, id_reserva):
+    def cancelar_reserva(self, id_reserva, ahora=None):
+        reserva = self._buscar(id_reserva)
+        if not reserva:
+            return {"status": "error", "message": "La reserva no existe"}
+        if (reserva.get("estado") or "").lower() == "cancelada":
+            return {"status": "error", "message": "La reserva ya está cancelada"}
+
+        momento = ahora or datetime.now()
+        inicio = self._inicio_reserva(reserva)
+        if inicio - momento < timedelta(hours=HORAS_MINIMAS_CANCELACION):
+            return {
+                "status": "error",
+                "message": f"Solo se puede cancelar con al menos {HORAS_MINIMAS_CANCELACION} horas de anticipación",
+            }
+
         try:
             id_salon = self._repository.cancelar(id_reserva)
             if id_salon is None:
@@ -80,3 +96,14 @@ class ReservaService:
         except Exception as e:
             return {"status": "error", "message": f"Error al ingresar a cola: {str(e)}"}
         return {"status": "cola", "message": "Añadido a lista de espera FIFO"}
+
+    def _buscar(self, id_reserva):
+        for r in self._repository.listar_detalle():
+            if r.get("id_reserva") == id_reserva:
+                return r
+        return None
+
+    def _inicio_reserva(self, reserva):
+        fecha = str(reserva["fecha"])
+        hora = str(reserva["hora_inicio"])[:5]
+        return datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")

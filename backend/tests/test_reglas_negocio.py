@@ -5,10 +5,37 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from interfaces.email_validator import IEmailValidator
+from interfaces.password_hasher import IPasswordHasher
+from interfaces.password_verifier import IPasswordVerifier
 from repositories.memory_reserva_repository import MemoryReservaRepository
 from repositories.memory_salon_repository import MemorySalonRepository
+from repositories.memory_usuario_repository import MemoryUsuarioRepository
+from services.email_validator import validar_dominio_email
+from services.login_service import LoginService
+from services.password_policy import validar_password
 from services.reserva_service import ReservaService
 from services.salon_service import CAPACIDAD_MAXIMA, CAPACIDAD_MINIMA, SalonService
+from services.usuario_service import UsuarioService
+
+
+class FakeHasher(IPasswordHasher):
+    def hash(self, password: str) -> str:
+        return f"hash:{password}"
+
+
+class FakeVerifier(IPasswordVerifier):
+    def verificar(self, password: str, almacenado: str) -> bool:
+        return almacenado == f"hash:{password}" or almacenado == password
+
+
+class FakeEmailOk(IEmailValidator):
+    def validar(self, email):
+        return None
+
+
+CLAVE = "Clave1234"
+ANCLA = "lfpaez30@ucatolica.edu.co"
 
 
 class TestCapacidadSalon(unittest.TestCase):
@@ -65,9 +92,23 @@ class TestCancelacionReserva(unittest.TestCase):
         self.id_reserva = self.repo._reservas[0]["id_reserva"]
 
     def test_cancelada_desaparece_de_la_lista(self):
-        self.assertEqual(self.service.cancelar_reserva(self.id_reserva)["status"], "ok")
+        ahora = datetime.strptime(f"{self.fecha} 01:00:00", "%Y-%m-%d %H:%M:%S")
+        self.assertEqual(self.service.cancelar_reserva(self.id_reserva, ahora=ahora)["status"], "ok")
         ids = [r["id_reserva"] for r in self.service.listar()["data"]]
         self.assertNotIn(self.id_reserva, ids)
+
+    def test_no_cancela_con_menos_de_8_horas(self):
+        inicio = datetime.strptime(f"{self.fecha} {self.hora}:00", "%Y-%m-%d %H:%M:%S")
+        ahora = inicio - timedelta(hours=7)
+        res = self.service.cancelar_reserva(self.id_reserva, ahora=ahora)
+        self.assertEqual(res["status"], "error")
+        self.assertIn("8 horas", res["message"])
+
+    def test_cancela_con_8_horas_o_mas(self):
+        inicio = datetime.strptime(f"{self.fecha} {self.hora}:00", "%Y-%m-%d %H:%M:%S")
+        ahora = inicio - timedelta(hours=8)
+        self.assertEqual(self.service.cancelar_reserva(self.id_reserva, ahora=ahora)["status"], "ok")
+
 
 
 if __name__ == "__main__":

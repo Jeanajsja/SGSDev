@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from interfaces.reserva_repository import IReservaRepository
 
+HORAS_MINIMAS_CANCELACION = 8
+
 
 class ReservaService:
 
@@ -66,17 +68,26 @@ class ReservaService:
             return {"status": "error", "message": "No se encontró la reserva para actualizar"}
         return {"status": "ok", "message": "Reserva actualizada con éxito"}
 
-    def cancelar_reserva(self, id_reserva, principal=None):
+    def cancelar_reserva(self, id_reserva, principal=None, ahora=None):
+        reserva = self._buscar(id_reserva)
+        if not reserva:
+            return {"status": "error", "message": "La reserva no existe"}
+        if (reserva.get("estado") or "").lower() == "cancelada":
+            return {"status": "error", "message": "La reserva ya está cancelada"}
+
+        if principal and principal["id_rol"] == 3:
+            if reserva.get("id_docente") != principal["id_usuario"]:
+                return {"status": "error", "message": "No puedes cancelar esta reserva"}
+
+        momento = ahora or datetime.now()
+        inicio = self._inicio_reserva(reserva)
+        if inicio - momento < timedelta(hours=HORAS_MINIMAS_CANCELACION):
+            return {
+                "status": "error",
+                "message": f"Solo se puede cancelar con al menos {HORAS_MINIMAS_CANCELACION} horas de anticipación",
+            }
+
         try:
-            if principal and principal["id_rol"] == 3:
-                reservas = self._repository.listar_detalle()
-                propia = any(
-                    reserva.get("id_reserva") == id_reserva
-                    and reserva.get("id_docente") == principal["id_usuario"]
-                    for reserva in reservas
-                )
-                if not propia:
-                    return {"status": "error", "message": "No puedes cancelar esta reserva"}
             id_salon = self._repository.cancelar(id_reserva)
             if id_salon is None:
                 return {"status": "error", "message": "No se encontró la reserva"}
@@ -95,3 +106,14 @@ class ReservaService:
         except Exception as e:
             return {"status": "error", "message": f"Error al ingresar a cola: {str(e)}"}
         return {"status": "cola", "message": "Añadido a lista de espera FIFO"}
+
+    def _buscar(self, id_reserva):
+        for r in self._repository.listar_detalle():
+            if r.get("id_reserva") == id_reserva:
+                return r
+        return None
+
+    def _inicio_reserva(self, reserva):
+        fecha = str(reserva["fecha"])
+        hora = str(reserva["hora_inicio"])[:5]
+        return datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
