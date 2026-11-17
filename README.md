@@ -58,8 +58,10 @@ mediante las variables `DB_*`; no usan almacenamiento en memoria en producción.
 Para Render usa los datos de **Transaction pooler** del panel de Supabase:
 `DB_HOST`, puerto `6543`, `DB_USER` exacto del panel (incluye el identificador
 del proyecto), `DB_PASSWORD` de PostgreSQL, `DB_NAME=postgres` y
-`DB_SSLMODE=require`. En local puedes usar la conexión directa (`5432`, usuario
-`postgres`) si tu red permite IPv6. Nunca subas `.env` a Git.
+`DB_SSLMODE=require`. Configura también `JWT_SECRET` en Render con un valor
+aleatorio de al menos 32 caracteres; no reutilices una contraseña. En local
+puedes usar la conexión directa (`5432`, usuario `postgres`) si tu red permite
+IPv6. Nunca subas `.env` a Git.
 Aplica el esquema con `supabase db push` antes de usar la aplicación.
 
 ## SOLID

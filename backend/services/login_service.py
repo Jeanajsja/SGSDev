@@ -1,6 +1,7 @@
 from interfaces.login_repository import ILoginRepository
 from interfaces.password_verifier import IPasswordVerifier
 from models.usuario_factory import usuario_desde_fila
+from services.common.auth import crear_token_acceso
 
 
 class LoginService:
@@ -26,4 +27,10 @@ class LoginService:
                 "message": "Tu cuenta está en espera de aprobación del superadministrador",
             }
 
-        return {"status": "ok", "user": usuario_desde_fila(user).to_public_dict()}
+        usuario_publico = usuario_desde_fila(user).to_public_dict()
+        return {
+            "status": "ok",
+            "user": usuario_publico,
+            "access_token": crear_token_acceso(usuario_publico),
+            "token_type": "bearer",
+        }

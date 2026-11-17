@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -86,9 +87,12 @@ class TestL_Sustitucion(unittest.TestCase):
         repo = MemoryUsuarioRepository()
         repo.crear("Ana", "ana@gmail.com", "hash:123", 1, "activo")
         service = LoginService(repo, FakeVerifier())
-        res = service.login("ana@gmail.com", "123")
+        with patch.dict(os.environ, {"JWT_SECRET": "test-secret-" * 4}):
+            res = service.login("ana@gmail.com", "123")
         self.assertEqual(res["status"], "ok")
         self.assertNotIn("password", res["user"])
+        self.assertTrue(res["access_token"])
+        self.assertEqual(res["token_type"], "bearer")
 
 
 class TestI_Segregacion(unittest.TestCase):
@@ -136,7 +140,8 @@ class TestI_Segregacion(unittest.TestCase):
         repo = MemoryUsuarioRepository()
         repo.crear("Ana", "ana@gmail.com", "hash:123", 1, "activo")
         service = LoginService(repo, FakeVerifier())
-        self.assertEqual(service.login("ana@gmail.com", "123")["status"], "ok")
+        with patch.dict(os.environ, {"JWT_SECRET": "test-secret-" * 4}):
+            self.assertEqual(service.login("ana@gmail.com", "123")["status"], "ok")
 
 
 class TestD_Inversion(unittest.TestCase):
