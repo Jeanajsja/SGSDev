@@ -1,10 +1,13 @@
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from repositories.memory_reserva_repository import MemoryReservaRepository
 from repositories.memory_salon_repository import MemorySalonRepository
+from services.reserva_service import ReservaService
 from services.salon_service import CAPACIDAD_MAXIMA, CAPACIDAD_MINIMA, SalonService
 
 
@@ -41,6 +44,30 @@ class TestSalonesDisponibles(unittest.TestCase):
         disponibles = service.listar_disponibles()
         self.assertEqual(len(disponibles), 1)
         self.assertEqual(disponibles[0]["nombre"], "Libre")
+
+
+class TestCancelacionReserva(unittest.TestCase):
+    def setUp(self):
+        self.repo = MemoryReservaRepository()
+        self.service = ReservaService(self.repo)
+        futuro = datetime.now() + timedelta(days=2)
+        self.fecha = futuro.strftime("%Y-%m-%d")
+        self.hora = "10:00"
+        self.service.crear_reserva(
+            {
+                "fecha": self.fecha,
+                "hora_inicio": self.hora,
+                "hora_fin": "12:00",
+                "id_salon": 1,
+                "id_docente": 1,
+            }
+        )
+        self.id_reserva = self.repo._reservas[0]["id_reserva"]
+
+    def test_cancelada_desaparece_de_la_lista(self):
+        self.assertEqual(self.service.cancelar_reserva(self.id_reserva)["status"], "ok")
+        ids = [r["id_reserva"] for r in self.service.listar()["data"]]
+        self.assertNotIn(self.id_reserva, ids)
 
 
 if __name__ == "__main__":

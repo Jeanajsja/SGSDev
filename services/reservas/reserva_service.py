@@ -3,12 +3,17 @@ from interfaces.reserva_repository import IReservaRepository
 
 
 class ReservaService:
+
     def __init__(self, repository: IReservaRepository):
         self._repository = repository
 
     def listar(self, principal=None):
         try:
-            reservas = self._repository.listar_detalle()
+            reservas = [
+                r
+                for r in self._repository.listar_detalle()
+                if (r.get("estado") or "").lower() != "cancelada"
+            ]
             if principal and principal["id_rol"] == 3:
                 reservas = [
                     reserva

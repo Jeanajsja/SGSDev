@@ -9,7 +9,12 @@ class ReservaService:
 
     def listar(self):
         try:
-            return {"status": "ok", "data": self._repository.listar_detalle()}
+            data = [
+                r
+                for r in self._repository.listar_detalle()
+                if (r.get("estado") or "").lower() != "cancelada"
+            ]
+            return {"status": "ok", "data": data}
         except ConnectionError as e:
             return {"status": "error", "message": str(e)}
         except Exception as e:
