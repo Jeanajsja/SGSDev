@@ -6,8 +6,11 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from interfaces.email_validator import IEmailValidator
+from interfaces.login_repository import ILoginRepository
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.password_verifier import IPasswordVerifier
+from interfaces.usuario_repository import IUsuarioRepository
+import inspect
 from models.administrador import Administrador
 from models.superadministrador import Superadministrador
 from models.usuario import Usuario
@@ -96,6 +99,30 @@ class TestL_Sustitucion(unittest.TestCase):
 
 
 class TestI_Segregacion(unittest.TestCase):
+    def test_hasher_y_verifier_son_interfaces_distintas(self):
+        self.assertTrue(hasattr(IPasswordHasher, "hash"))
+        self.assertFalse(hasattr(IPasswordHasher, "verificar"))
+        self.assertTrue(hasattr(IPasswordVerifier, "verificar"))
+        self.assertFalse(hasattr(IPasswordVerifier, "hash"))
+
+    def test_login_repo_no_expone_crud_de_usuario(self):
+        metodos_login = {
+            name
+            for name, _ in inspect.getmembers(ILoginRepository, predicate=inspect.isfunction)
+        } | set(ILoginRepository.__abstractmethods__)
+        self.assertEqual(metodos_login, {"buscar_por_email"})
+        self.assertIn("crear", IUsuarioRepository.__abstractmethods__)
+        self.assertIn("actualizar_password", IUsuarioRepository.__abstractmethods__)
+        self.assertNotIn("crear", ILoginRepository.__abstractmethods__)
+
+    def test_constructores_segregados(self):
+        params_login = list(inspect.signature(LoginService.__init__).parameters)
+        params_usuario = list(inspect.signature(UsuarioService.__init__).parameters)
+        self.assertIn("password_verifier", params_login)
+        self.assertNotIn("password_hasher", params_login)
+        self.assertIn("password_hasher", params_usuario)
+        self.assertNotIn("password_verifier", params_usuario)
+
     def test_registro_no_pide_verificar(self):
         service = UsuarioService(MemoryUsuarioRepository(), FakeHasher(), FakeEmailOk())
         res = service.crear_usuario(

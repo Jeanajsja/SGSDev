@@ -1,10 +1,11 @@
 import unittest
-from interfaces.password_hasher import IPasswordHasher
+
+from interfaces.password_verifier import IPasswordVerifier
 from login_service import LoginService
 from repositories.memory_login_repository import MemoryLoginRepository
 
 
-class FakeHasher(IPasswordHasher):
+class FakeVerifier(IPasswordVerifier):
     def verificar(self, password: str, almacenado: str) -> bool:
         return almacenado == password or almacenado == f"hash:{password}"
 
@@ -19,9 +20,10 @@ class TestLoginService(unittest.TestCase):
                 "email": "ana@gmail.com",
                 "password": "hash:123",
                 "id_rol": 1,
+                "estado": "activo",
             }
         )
-        self.service = LoginService(self.repo, FakeHasher())
+        self.service = LoginService(self.repo, FakeVerifier())
 
     def test_login_ok(self):
         res = self.service.login("ana@gmail.com", "123")
@@ -31,6 +33,10 @@ class TestLoginService(unittest.TestCase):
     def test_login_malo(self):
         res = self.service.login("ana@gmail.com", "otra")
         self.assertEqual(res["status"], "error")
+
+    def test_isp_verifier_sin_hash(self):
+        self.assertTrue(hasattr(IPasswordVerifier, "verificar"))
+        self.assertFalse(hasattr(IPasswordVerifier, "hash"))
 
 
 if __name__ == "__main__":

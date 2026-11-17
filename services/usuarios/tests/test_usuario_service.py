@@ -15,8 +15,23 @@ class FakeRepository:
             return {"email": SUPERADMIN_ANCLA, "id_rol": 1}
         return None
 
-    def crear(self, nombre, email, password_hash, id_rol):
-        self.created.append((nombre, email, password_hash, id_rol))
+    def crear(self, nombre, email, password_hash, id_rol, estado="activo"):
+        self.created.append((nombre, email, password_hash, id_rol, estado))
+
+    def listar(self):
+        return []
+
+    def buscar_por_id(self, id_usuario):
+        return None
+
+    def actualizar_rol(self, id_usuario, id_rol):
+        return False
+
+    def actualizar_password(self, email, password_hash):
+        return False
+
+    def eliminar(self, id_usuario):
+        return False
 
 
 class FakePasswordHasher:

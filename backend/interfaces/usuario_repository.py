@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class IUsuarioRepository(ABC):
     @abstractmethod
-    def crear(self, nombre, email, password_hash, id_rol):
+    def crear(self, nombre, email, password_hash, id_rol, estado="activo"):
         pass
 
     @abstractmethod
@@ -20,6 +20,10 @@ class IUsuarioRepository(ABC):
 
     @abstractmethod
     def actualizar_rol(self, id_usuario, id_rol):
+        pass
+
+    @abstractmethod
+    def actualizar_password(self, email, password_hash):
         pass
 
     @abstractmethod

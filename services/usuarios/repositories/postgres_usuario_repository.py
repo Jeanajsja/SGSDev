@@ -82,9 +82,14 @@ class PostgresUsuarioRepository(IUsuarioRepository):
             raise ConnectionError("No se pudo conectar a la base de datos")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(
-                f"SELECT id_usuario, nombre, email, id_rol FROM {TABLA} ORDER BY id_usuario"
-            )
+            try:
+                cursor.execute(
+                    f"SELECT id_usuario, nombre, email, id_rol, estado FROM {TABLA} ORDER BY id_usuario"
+                )
+            except Exception:
+                cursor.execute(
+                    f"SELECT id_usuario, nombre, email, id_rol FROM {TABLA} ORDER BY id_usuario"
+                )
             return cursor.fetchall()
         finally:
             conn.close()
@@ -95,10 +100,16 @@ class PostgresUsuarioRepository(IUsuarioRepository):
             raise ConnectionError("No se pudo conectar a la base de datos")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(
-                f"SELECT id_usuario, nombre, email, id_rol FROM {TABLA} WHERE id_usuario = %s",
-                (id_usuario,),
-            )
+            try:
+                cursor.execute(
+                    f"SELECT id_usuario, nombre, email, id_rol, estado FROM {TABLA} WHERE id_usuario = %s",
+                    (id_usuario,),
+                )
+            except Exception:
+                cursor.execute(
+                    f"SELECT id_usuario, nombre, email, id_rol FROM {TABLA} WHERE id_usuario = %s",
+                    (id_usuario,),
+                )
             return cursor.fetchone()
         finally:
             conn.close()
@@ -109,10 +120,16 @@ class PostgresUsuarioRepository(IUsuarioRepository):
             raise ConnectionError("No se pudo conectar a la base de datos")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(
-                f"SELECT id_usuario, nombre, email, id_rol FROM {TABLA} WHERE lower(email) = lower(%s)",
-                (email,),
-            )
+            try:
+                cursor.execute(
+                    f"SELECT id_usuario, nombre, email, password, id_rol, estado FROM {TABLA} WHERE lower(email) = lower(%s)",
+                    (email,),
+                )
+            except Exception:
+                cursor.execute(
+                    f"SELECT id_usuario, nombre, email, password, id_rol FROM {TABLA} WHERE lower(email) = lower(%s)",
+                    (email,),
+                )
             return cursor.fetchone()
         finally:
             conn.close()

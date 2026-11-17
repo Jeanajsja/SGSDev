@@ -2,12 +2,12 @@ import os
 import unittest
 from unittest.mock import patch
 
-from interfaces.password_hasher import IPasswordHasher
+from interfaces.password_verifier import IPasswordVerifier
 from login_service import LoginService
 from repositories.memory_login_repository import MemoryLoginRepository
 
 
-class FakeHasher(IPasswordHasher):
+class FakeVerifier(IPasswordVerifier):
     def verificar(self, password: str, almacenado: str) -> bool:
         return almacenado == password or almacenado == f"hash:{password}"
 
@@ -24,7 +24,7 @@ class TestLoginService(unittest.TestCase):
                 "id_rol": 1,
             }
         )
-        self.service = LoginService(self.repo, FakeHasher())
+        self.service = LoginService(self.repo, FakeVerifier())
 
     def test_login_ok(self):
         with patch.dict(os.environ, {"JWT_SECRET": "test-secret-" * 6}):
@@ -37,6 +37,11 @@ class TestLoginService(unittest.TestCase):
     def test_login_malo(self):
         res = self.service.login("ana@gmail.com", "otra")
         self.assertEqual(res["status"], "error")
+
+    def test_login_no_pide_hash(self):
+        self.assertFalse(hasattr(self.service, "hash"))
+        self.assertTrue(hasattr(self.service._password_verifier, "verificar"))
+        self.assertFalse(hasattr(IPasswordVerifier, "hash"))
 
 
 if __name__ == "__main__":

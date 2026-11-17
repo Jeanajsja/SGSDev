@@ -12,7 +12,10 @@ class PostgresLoginRepository(ILoginRepository):
             raise ConnectionError("No se pudo conectar a la base de datos de Supabase")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("SELECT * FROM usuario WHERE email = %s", (email,))
+            cursor.execute(
+                "SELECT * FROM usuario WHERE lower(email) = lower(%s)",
+                (email,),
+            )
             return cursor.fetchone()
         finally:
             conn.close()
