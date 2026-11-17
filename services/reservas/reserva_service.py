@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 from interfaces.reserva_repository import IReservaRepository
 
 HORAS_MINIMAS_CANCELACION = 8
-MAX_HORAS_DIA = 10
+MAX_HORAS_DIA = 8
+MAX_HORAS_DIA_EXTENDIDO = 10
+MAX_DIAS_EXTENDIDOS = 2
 MAX_HORAS_SEMANA = 46
 
 
@@ -135,24 +137,40 @@ class ReservaService:
             for r in self._repository.listar_detalle()
             if r.get("id_docente") == id_docente and (r.get("estado") or "").lower() != "cancelada"
         ]
-        horas_dia = sum(
-            self._duracion_horas(r["hora_inicio"], r["hora_fin"])
-            for r in activas
-            if str(r["fecha"]) == str(fecha)
-        )
-        if horas_dia + horas_nuevas > MAX_HORAS_DIA:
-            return {
-                "status": "error",
-                "message": f"El docente no puede agendar más de {MAX_HORAS_DIA} horas al día",
-            }
-
         inicio_semana = self._lunes_de(fecha)
         fin_semana = inicio_semana + timedelta(days=6)
-        horas_semana = 0.0
+        horas_por_dia = {}
         for r in activas:
             dia = datetime.strptime(str(r["fecha"]), "%Y-%m-%d").date()
             if inicio_semana <= dia <= fin_semana:
-                horas_semana += self._duracion_horas(r["hora_inicio"], r["hora_fin"])
+                clave = str(r["fecha"])
+                horas_por_dia[clave] = horas_por_dia.get(clave, 0.0) + self._duracion_horas(
+                    r["hora_inicio"], r["hora_fin"]
+                )
+
+        horas_dia = horas_por_dia.get(str(fecha), 0.0)
+        total_dia = horas_dia + horas_nuevas
+        if total_dia > MAX_HORAS_DIA_EXTENDIDO:
+            return {
+                "status": "error",
+                "message": f"El docente no puede agendar más de {MAX_HORAS_DIA_EXTENDIDO} horas al día",
+            }
+        if total_dia > MAX_HORAS_DIA and horas_dia <= MAX_HORAS_DIA:
+            dias_extendidos = sum(
+                1
+                for dia, horas in horas_por_dia.items()
+                if dia != str(fecha) and horas > MAX_HORAS_DIA
+            )
+            if dias_extendidos >= MAX_DIAS_EXTENDIDOS:
+                return {
+                    "status": "error",
+                    "message": (
+                        f"El docente solo puede tener {MAX_DIAS_EXTENDIDOS} días de "
+                        f"{MAX_HORAS_DIA_EXTENDIDO} horas; el resto máximo {MAX_HORAS_DIA} horas diarias"
+                    ),
+                }
+
+        horas_semana = sum(horas_por_dia.values())
         if horas_semana + horas_nuevas > MAX_HORAS_SEMANA:
             return {
                 "status": "error",
