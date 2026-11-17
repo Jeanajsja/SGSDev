@@ -148,7 +148,7 @@ class TestD_Inversion(unittest.TestCase):
         self.assertEqual(res["status"], "error")
 
     def test_docente_usa_el_validador_inyectado(self):
-        service = DocenteService(MemoryDocenteRepository(), FakeEmailOk())
+        service = DocenteService(MemoryDocenteRepository(), FakeHasher(), FakeEmailOk())
         res = service.crear({"nombre": "Maria", "correo": "maria@gmail.com"})
         self.assertEqual(res["status"], "ok")
         self.assertEqual(len(service.listar()), 1)
