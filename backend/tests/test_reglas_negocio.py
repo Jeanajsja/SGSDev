@@ -174,6 +174,10 @@ class TestPasswordYRegistro(unittest.TestCase):
         malo = self.service.restablecer_password(ANCLA, "corta1")
         self.assertEqual(malo["status"], "error")
 
+    def test_validacion_correo(self):
+        self.assertEqual(validar_dominio_email("ana@gmal.com")["status"], "error")
+        self.assertIsNone(validar_dominio_email("ana@gmail.com"))
+
     
 if __name__ == "__main__":
     unittest.main()
