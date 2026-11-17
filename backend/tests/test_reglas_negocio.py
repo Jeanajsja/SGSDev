@@ -110,6 +110,51 @@ class TestCancelacionReserva(unittest.TestCase):
         self.assertEqual(self.service.cancelar_reserva(self.id_reserva, ahora=ahora)["status"], "ok")
 
 
+class TestCargaDocente(unittest.TestCase):
+    def setUp(self):
+        self.repo = MemoryReservaRepository()
+        self.service = ReservaService(self.repo)
+
+    def test_maximo_10_horas_al_dia(self):
+        fecha = "2026-09-14"
+        self.service.crear_reserva(
+            {"fecha": fecha, "hora_inicio": "07:00", "hora_fin": "12:00", "id_salon": 1, "id_docente": 2}
+        )
+        self.service.crear_reserva(
+            {"fecha": fecha, "hora_inicio": "12:00", "hora_fin": "17:00", "id_salon": 2, "id_docente": 2}
+        )
+        exceso = self.service.crear_reserva(
+            {"fecha": fecha, "hora_inicio": "17:00", "hora_fin": "18:00", "id_salon": 3, "id_docente": 2}
+        )
+        self.assertEqual(exceso["status"], "error")
+        self.assertIn("10 horas", exceso["message"])
+
+    def test_maximo_46_horas_semanales(self):
+        # lunes a viernes: 5 dias x 9h = 45h; el sexto bloque de 2h rompe el tope
+        dias = ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"]
+        for i, fecha in enumerate(dias):
+            self.service.crear_reserva(
+                {
+                    "fecha": fecha,
+                    "hora_inicio": "07:00",
+                    "hora_fin": "16:00",
+                    "id_salon": i + 1,
+                    "id_docente": 5,
+                }
+            )
+        exceso = self.service.crear_reserva(
+            {
+                "fecha": "2026-09-19",
+                "hora_inicio": "08:00",
+                "hora_fin": "10:00",
+                "id_salon": 10,
+                "id_docente": 5,
+            }
+        )
+        self.assertEqual(exceso["status"], "error")
+        self.assertIn("46 horas", exceso["message"])
+
+
 
 if __name__ == "__main__":
     unittest.main()

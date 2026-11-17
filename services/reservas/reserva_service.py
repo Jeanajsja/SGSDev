@@ -2,10 +2,11 @@ from datetime import datetime, timedelta
 from interfaces.reserva_repository import IReservaRepository
 
 HORAS_MINIMAS_CANCELACION = 8
+MAX_HORAS_DIA = 10
+MAX_HORAS_SEMANA = 46
 
 
 class ReservaService:
-
     def __init__(self, repository: IReservaRepository):
         self._repository = repository
 
@@ -37,6 +38,11 @@ class ReservaService:
                 h_fin = (t_ini + timedelta(hours=2)).strftime("%H:%M")
             except Exception:
                 h_fin = "22:00"
+
+        horas_nuevas = self._duracion_horas(h_ini, h_fin)
+        error_carga = self._validar_carga(data["id_docente"], data["fecha"], horas_nuevas)
+        if error_carga:
+            return error_carga
 
         try:
             if self._repository.existe_cruce(
@@ -117,3 +123,43 @@ class ReservaService:
         fecha = str(reserva["fecha"])
         hora = str(reserva["hora_inicio"])[:5]
         return datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+
+    def _duracion_horas(self, hora_inicio, hora_fin):
+        t_ini = datetime.strptime(str(hora_inicio)[:5], "%H:%M")
+        t_fin = datetime.strptime(str(hora_fin)[:5], "%H:%M")
+        return max((t_fin - t_ini).total_seconds() / 3600.0, 0)
+
+    def _validar_carga(self, id_docente, fecha, horas_nuevas):
+        activas = [
+            r
+            for r in self._repository.listar_detalle()
+            if r.get("id_docente") == id_docente and (r.get("estado") or "").lower() != "cancelada"
+        ]
+        horas_dia = sum(
+            self._duracion_horas(r["hora_inicio"], r["hora_fin"])
+            for r in activas
+            if str(r["fecha"]) == str(fecha)
+        )
+        if horas_dia + horas_nuevas > MAX_HORAS_DIA:
+            return {
+                "status": "error",
+                "message": f"El docente no puede agendar más de {MAX_HORAS_DIA} horas al día",
+            }
+
+        inicio_semana = self._lunes_de(fecha)
+        fin_semana = inicio_semana + timedelta(days=6)
+        horas_semana = 0.0
+        for r in activas:
+            dia = datetime.strptime(str(r["fecha"]), "%Y-%m-%d").date()
+            if inicio_semana <= dia <= fin_semana:
+                horas_semana += self._duracion_horas(r["hora_inicio"], r["hora_fin"])
+        if horas_semana + horas_nuevas > MAX_HORAS_SEMANA:
+            return {
+                "status": "error",
+                "message": f"El docente no puede agendar más de {MAX_HORAS_SEMANA} horas semanales",
+            }
+        return None
+
+    def _lunes_de(self, fecha):
+        dia = datetime.strptime(str(fecha), "%Y-%m-%d").date()
+        return dia - timedelta(days=dia.weekday())
