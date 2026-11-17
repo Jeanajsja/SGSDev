@@ -13,6 +13,13 @@ class SalonService:
     def listar(self):
         return [Salon.from_row(row).to_dict() for row in self._repository.listar()]
 
+    def listar_disponibles(self):
+        return [
+            Salon.from_row(row).to_dict()
+            for row in self._repository.listar()
+            if (row.get("estado") or "").lower() == "disponible"
+        ]
+
     def crear(self, data):
         error = self._validar(data)
         if error:

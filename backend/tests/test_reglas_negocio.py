@@ -31,5 +31,17 @@ class TestCapacidadSalon(unittest.TestCase):
         self.assertIn("máxima", res["message"])
 
 
+class TestSalonesDisponibles(unittest.TestCase):
+    def test_solo_aparecen_disponibles(self):
+        repo = MemorySalonRepository()
+        service = SalonService(repo)
+        service.crear({"nombre": "Libre", "capacidad": 10, "ubicacion": "A"})
+        service.crear({"nombre": "Ocupado", "capacidad": 10, "ubicacion": "B"})
+        repo._salones[1]["estado"] = "ocupado"
+        disponibles = service.listar_disponibles()
+        self.assertEqual(len(disponibles), 1)
+        self.assertEqual(disponibles[0]["nombre"], "Libre")
+
+
 if __name__ == "__main__":
     unittest.main()
