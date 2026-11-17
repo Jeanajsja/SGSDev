@@ -195,6 +195,24 @@ class TestPasswordYRegistro(unittest.TestCase):
         self.assertEqual(segundo["status"], "error")
         self.assertIn("un registro por correo", segundo["message"])
 
-    
+    def test_rol_queda_en_espera_sin_superadmin(self):
+        res = self.service.crear_usuario(
+            {"nombre": "Pedro", "email": "pedro@gmail.com", "password": CLAVE, "id_rol": 3}
+        )
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(res["estado"], "pendiente")
+        usuario = self.repo.buscar_por_email("pedro@gmail.com")
+        self.assertEqual(usuario["estado"], "pendiente")
+
+        login = LoginService(self.repo, FakeVerifier())
+        bloqueado = login.login("pedro@gmail.com", CLAVE)
+        self.assertEqual(bloqueado["status"], "error")
+        self.assertIn("espera", bloqueado["message"])
+
+        self.service.cambiar_rol(usuario["id_usuario"], 3, ANCLA)
+        self.assertEqual(self.repo.buscar_por_id(usuario["id_usuario"])["estado"], "activo")
+        self.assertEqual(login.login("pedro@gmail.com", CLAVE)["status"], "ok")
+
+
 if __name__ == "__main__":
     unittest.main()

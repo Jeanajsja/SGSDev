@@ -16,6 +16,14 @@ class LoginService:
         except Exception as e:
             return {"status": "error", "message": f"Error en el servidor: {str(e)}"}
 
-        if user and self._password_verifier.verificar(password, user["password"]):
-            return {"status": "ok", "user": usuario_desde_fila(user).to_public_dict()}
-        return {"status": "error", "message": "Credenciales inválidas"}
+        if not user or not self._password_verifier.verificar(password, user["password"]):
+            return {"status": "error", "message": "Credenciales inválidas"}
+
+        estado = (user.get("estado") or "activo").lower()
+        if estado == "pendiente":
+            return {
+                "status": "error",
+                "message": "Tu cuenta está en espera de aprobación del superadministrador",
+            }
+
+        return {"status": "ok", "user": usuario_desde_fila(user).to_public_dict()}

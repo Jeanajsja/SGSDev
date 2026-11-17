@@ -35,9 +35,12 @@ class UsuarioService:
         if self._repository.buscar_por_email(data.get("email", "")):
             return {"status": "error", "message": "Solo se permite un registro por correo"}
 
+        solicitante_email = (data.get("solicitante_email") or "").lower()
+        estado = "activo" if solicitante_email == SUPERADMIN_ANCLA else "pendiente"
+
         try:
             password_segura = self._password_hasher.hash(data["password"])
-            self._repository.crear(data["nombre"], data["email"], password_segura, id_rol)
+            self._repository.crear(data["nombre"], data["email"], password_segura, id_rol, estado)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
@@ -45,8 +48,7 @@ class UsuarioService:
             if "duplicate" in mensaje or "existe" in mensaje:
                 return {"status": "error", "message": "Solo se permite un registro por correo"}
             return {"status": "error", "message": f"El correo ya existe o hay un error: {str(e)}"}
-        return {"status": "ok", "message": "Cuenta creada exitosamente"}
-
+        return {"status": "ok", "message": "Cuenta creada exitosamente", "estado": estado}
 
     def restablecer_password(self, email, nueva_password):
         error_clave = validar_password(nueva_password)
@@ -138,4 +140,5 @@ class UsuarioService:
             "nombre": usuario["nombre"],
             "email": usuario["email"],
             "id_rol": usuario["id_rol"],
+            "estado": usuario.get("estado", "activo"),
         }

@@ -36,6 +36,7 @@ class MemoryUsuarioRepository(IUsuarioRepository, ILoginRepository):
         for usuario in self._usuarios:
             if usuario["id_usuario"] == id_usuario:
                 usuario["id_rol"] = id_rol
+                usuario["estado"] = "activo"
                 return True
         return False
 

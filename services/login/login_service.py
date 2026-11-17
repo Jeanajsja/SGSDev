@@ -17,12 +17,20 @@ class LoginService:
         except Exception as e:
             return {"status": "error", "message": f"Error en el servidor: {str(e)}"}
 
-        if user and self._password_hasher.verificar(password, user["password"]):
-            usuario_publico = Usuario.from_row(user).to_public_dict()
+        if not user or not self._password_hasher.verificar(password, user["password"]):
+            return {"status": "error", "message": "Credenciales inválidas"}
+
+        estado = (user.get("estado") or "activo").lower()
+        if estado == "pendiente":
             return {
-                "status": "ok",
-                "user": usuario_publico,
-                "access_token": crear_token_acceso(usuario_publico),
-                "token_type": "bearer",
+                "status": "error",
+                "message": "Tu cuenta está en espera de aprobación del superadministrador",
             }
-        return {"status": "error", "message": "Credenciales inválidas"}
+
+        usuario_publico = Usuario.from_row(user).to_public_dict()
+        return {
+            "status": "ok",
+            "user": usuario_publico,
+            "access_token": crear_token_acceso(usuario_publico),
+            "token_type": "bearer",
+        }
