@@ -1,6 +1,9 @@
 from interfaces.salon_repository import ISalonRepository
 from models.salon import Salon
 
+CAPACIDAD_MINIMA = 1
+CAPACIDAD_MAXIMA = 20
+
 
 class SalonService:
 
@@ -50,6 +53,14 @@ class SalonService:
             capacidad = int(data.get("capacidad"))
         except (TypeError, ValueError):
             return {"status": "error", "message": "La capacidad debe ser un número entero"}
-        if capacidad <= 0:
-            return {"status": "error", "message": "La capacidad debe ser mayor a 0"}
+        if capacidad < CAPACIDAD_MINIMA:
+            return {
+                "status": "error",
+                "message": f"La capacidad mínima es {CAPACIDAD_MINIMA} estudiante",
+            }
+        if capacidad > CAPACIDAD_MAXIMA:
+            return {
+                "status": "error",
+                "message": f"La capacidad máxima es {CAPACIDAD_MAXIMA} estudiantes",
+            }
         return None

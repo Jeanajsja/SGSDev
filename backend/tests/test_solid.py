@@ -57,7 +57,7 @@ class TestS_ResponsabilidadUnica(unittest.TestCase):
 class TestO_AbiertoCerrado(unittest.TestCase):
     def test_otro_repo_sin_cambiar_el_servicio(self):
         service = SalonService(MemorySalonRepository())
-        res = service.crear({"nombre": "Lab Redes", "capacidad": 30, "ubicacion": "Piso 3"})
+        res = service.crear({"nombre": "Lab Redes", "capacidad": 15, "ubicacion": "Piso 3"})
         self.assertEqual(res["status"], "ok")
         self.assertEqual(len(service.listar()), 1)
 
