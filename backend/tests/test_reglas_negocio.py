@@ -178,6 +178,23 @@ class TestPasswordYRegistro(unittest.TestCase):
         self.assertEqual(validar_dominio_email("ana@gmal.com")["status"], "error")
         self.assertIsNone(validar_dominio_email("ana@gmail.com"))
 
+    def test_un_registro_por_correo(self):
+        primero = self.service.crear_usuario(
+            {
+                "nombre": "Ana",
+                "email": "ana@gmail.com",
+                "password": CLAVE,
+                "id_rol": 3,
+                "solicitante_email": ANCLA,
+            }
+        )
+        self.assertEqual(primero["status"], "ok")
+        segundo = self.service.crear_usuario(
+            {"nombre": "Otra", "email": "ana@gmail.com", "password": CLAVE, "id_rol": 2}
+        )
+        self.assertEqual(segundo["status"], "error")
+        self.assertIn("un registro por correo", segundo["message"])
+
     
 if __name__ == "__main__":
     unittest.main()

@@ -32,12 +32,18 @@ class UsuarioService:
                     "status": "error",
                     "message": "Solo el superadministrador ancla puede crear otro superadministrador",
                 }
+        if self._repository.buscar_por_email(data.get("email", "")):
+            return {"status": "error", "message": "Solo se permite un registro por correo"}
+
         try:
             password_segura = self._password_hasher.hash(data["password"])
             self._repository.crear(data["nombre"], data["email"], password_segura, id_rol)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
+            mensaje = str(e).lower()
+            if "duplicate" in mensaje or "existe" in mensaje:
+                return {"status": "error", "message": "Solo se permite un registro por correo"}
             return {"status": "error", "message": f"El correo ya existe o hay un error: {str(e)}"}
         return {"status": "ok", "message": "Cuenta creada exitosamente"}
 
