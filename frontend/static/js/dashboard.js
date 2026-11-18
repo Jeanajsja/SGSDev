@@ -397,14 +397,16 @@ function crearEventoAgenda(r, compacto = false) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = compacto ? 'cal-event cal-event-compact' : 'cal-event';
-    btn.style.cssText = `border:0;border-radius:8px;color:#fff;text-align:left;padding:${compacto ? '4px 6px' : '6px 8px'};background:${colorAgenda(r.docente || r.id_docente || salon)};box-shadow:0 6px 14px rgba(7,24,51,.16);cursor:pointer;overflow:hidden;`;
-    btn.title = `${ini}-${fin} · ${r.docente || 'Docente'} · ${salon}`;
+    const idClase = r.id_clase || r.id_docente;
+    const etiquetaClase = idClase != null ? `Clase #${idClase}` : (r.docente || 'Clase');
+    btn.style.cssText = `border:0;border-radius:8px;color:#fff;text-align:left;padding:${compacto ? '4px 6px' : '6px 8px'};background:${colorAgenda(etiquetaClase || salon)};box-shadow:0 6px 14px rgba(7,24,51,.16);cursor:pointer;overflow:hidden;`;
+    btn.title = `${ini}-${fin} · ${etiquetaClase} · ${salon}`;
     if (compacto) {
         btn.style.fontSize = '10px';
         btn.style.fontWeight = '700';
         btn.textContent = `${ini} ${salon}`;
     } else {
-        btn.innerHTML = `<strong style="display:block;font-size:11px;font-weight:800">${ini} - ${fin}</strong><span style="display:block;font-size:10px;margin-top:2px;opacity:.92">${r.docente || 'Docente'}</span><span style="display:block;font-size:10px;opacity:.92">${salon}</span>`;
+        btn.innerHTML = `<strong style="display:block;font-size:11px;font-weight:800">${ini} - ${fin}</strong><span style="display:block;font-size:10px;margin-top:2px;opacity:.92">${etiquetaClase}</span><span style="display:block;font-size:10px;opacity:.92">${salon}</span>`;
     }
     btn.onclick = (e) => {
         e.stopPropagation();
@@ -658,7 +660,7 @@ async function cargarTabla(tipo, requestId = navegacionId) {
         body.replaceChildren();
 
         if (tipo === 'reservas' || tipo === 'reservas_globales') {
-            head.innerHTML = '<tr><th class="px-6 py-4">Docente</th><th class="px-6 py-4">Salón</th><th class="px-6 py-4">Fecha</th><th class="px-6 py-4">Horario</th><th class="px-6 py-4">Acción</th></tr>';
+            head.innerHTML = '<tr><th class="px-6 py-4">ID clase</th><th class="px-6 py-4">Salón</th><th class="px-6 py-4">Fecha</th><th class="px-6 py-4">Horario</th><th class="px-6 py-4">Acción</th></tr>';
             const data = result.data || [];
 
             if (data.length === 0) {
@@ -667,9 +669,10 @@ async function cargarTabla(tipo, requestId = navegacionId) {
                 data.forEach(r => {
                     const h_ini = r.hora_inicio ? r.hora_inicio.substring(0,5) : '--:--';
                     const h_fin = r.hora_fin ? r.hora_fin.substring(0,5) : '--:--';
+                    const idClase = r.id_clase || r.id_docente;
                     const row = document.createElement('tr');
                     row.className = "border-b hover:bg-slate-50/50 transition";
-                    agregarCelda(row, r.docente, "px-6 py-4 font-bold text-slate-700");
+                    agregarCelda(row, idClase != null ? `#${idClase}` : '--', "px-6 py-4 font-bold text-slate-700");
                     agregarCelda(row, r.salon, "px-6 py-4 text-slate-600");
                     agregarCelda(row, r.fecha, "px-6 py-4 text-slate-600");
                     const horario = agregarCelda(row, "", "px-6 py-4 text-slate-600");
@@ -685,7 +688,7 @@ async function cargarTabla(tipo, requestId = navegacionId) {
                             "Editar",
                             "fas fa-edit",
                             "text-ucc-azul font-bold hover:underline mr-4",
-                            () => editarReserva(r.id_reserva, r.fecha, h_ini, h_fin, r.id_salon, r.id_docente)
+                            () => editarReserva(r.id_reserva, r.fecha, h_ini, h_fin, r.id_salon, idClase)
                         );
                     }
                     agregarBoton(
@@ -882,8 +885,8 @@ async function prepararModal(tipo, editData = null) {
             </div>
             ${user.id_rol != 3 ? `
             <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-400 uppercase">ID del Docente</label>
-                <input type="number" id="m-docente" placeholder="ID del Docente" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+                <label class="text-xs font-bold text-slate-400 uppercase">ID clase</label>
+                <input type="number" id="m-clase" placeholder="ID clase" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
             </div>
             ` : ''}
         `;
@@ -893,7 +896,7 @@ async function prepararModal(tipo, editData = null) {
             document.getElementById('m-inicio').value = editData.hora_inicio;
             document.getElementById('m-fin').value = editData.hora_fin;
             if (user.id_rol != 3) {
-                document.getElementById('m-docente').value = String(editData.id_docente);
+                document.getElementById('m-clase').value = String(editData.id_clase || editData.id_docente);
             }
         }
         document.getElementById('modalMaestro').classList.remove('hidden');
@@ -1035,8 +1038,8 @@ function editarSalon(id, nombre, capacidad, ubicacion) {
     document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, 'editar_salon');
 }
 
-function editarReserva(id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_docente) {
-    prepararModal('reserva', { id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_docente });
+function editarReserva(id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_clase) {
+    prepararModal('reserva', { id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_clase, id_docente: id_clase });
 }
 
 async function enviarFormulario(e, tipo) {
@@ -1047,23 +1050,23 @@ async function enviarFormulario(e, tipo) {
     let method = 'POST';
     
     if (tipo === 'reserva') {
-        const id_docente_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-docente').value;
+        const id_clase_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-clase').value;
         data = { 
             fecha: document.getElementById('m-fecha').value, 
             hora_inicio: document.getElementById('m-inicio').value, 
             hora_fin: document.getElementById('m-fin').value,
             id_salon: parseInt(document.getElementById('m-salon').value), 
-            id_docente: parseInt(id_docente_val)
+            id_clase: parseInt(id_clase_val)
         };
     } else if (tipo === 'editar_reserva') {
         const id_reserva = document.getElementById('m-reserva-id').value;
-        const id_docente_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-docente').value;
+        const id_clase_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-clase').value;
         data = { 
             fecha: document.getElementById('m-fecha').value, 
             hora_inicio: document.getElementById('m-inicio').value, 
             hora_fin: document.getElementById('m-fin').value,
             id_salon: parseInt(document.getElementById('m-salon').value), 
-            id_docente: parseInt(id_docente_val)
+            id_clase: parseInt(id_clase_val)
         };
         endpoint = `${API_URL}/reservas/${id_reserva}`;
         method = 'PUT';

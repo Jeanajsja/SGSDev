@@ -15,7 +15,8 @@ class PostgresReservaRepository(IReservaRepository):
             cursor.execute(
                 """
                 SELECT r.id_reserva, r.fecha::TEXT, r.hora_inicio::TEXT, r.hora_fin::TEXT, r.estado,
-                       COALESCE(u.nombre, 'Admin') as docente, s.nombre as salon, r.id_docente, r.id_salon
+                       COALESCE(u.nombre, 'Admin') as docente, s.nombre as salon,
+                       r.id_docente, r.id_docente as id_clase, r.id_salon
                 FROM reserva r
                 LEFT JOIN usuario u ON r.id_docente = u.id_usuario
                 LEFT JOIN salon s ON r.id_salon = s.id_salon

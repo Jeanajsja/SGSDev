@@ -12,7 +12,22 @@ class ReservaPayload(BaseModel):
     hora_inicio: str
     hora_fin: Optional[str] = None
     id_salon: int = Field(gt=0)
+    id_clase: Optional[int] = Field(default=None, gt=0)
     id_docente: Optional[int] = Field(default=None, gt=0)
+
+
+def _resolver_id_clase(data: dict, principal=None) -> dict:
+    if principal and principal.get("id_rol") == 3:
+        data["id_clase"] = principal["id_usuario"]
+    elif data.get("id_clase") is None and data.get("id_docente") is not None:
+        data["id_clase"] = data["id_docente"]
+    if data.get("id_clase") is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Se requiere el ID clase de la reserva",
+        )
+    data["id_docente"] = data["id_clase"]  # columna histórica en BD
+    return data
 
 
 def crear_router(service: ReservaService) -> APIRouter:
@@ -27,14 +42,7 @@ def crear_router(service: ReservaService) -> APIRouter:
 
     @router.post("/reservas")
     def crear(payload: ReservaPayload, principal=Depends(usuario_actual)):
-        data = payload.model_dump()
-        if principal["id_rol"] == 3:
-            data["id_docente"] = principal["id_usuario"]
-        elif data["id_docente"] is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Se requiere el docente asociado a la reserva",
-            )
+        data = _resolver_id_clase(payload.model_dump(), principal)
         return service.crear_reserva(data)
 
     @router.put("/reservas/{id_reserva}")
@@ -43,12 +51,8 @@ def crear_router(service: ReservaService) -> APIRouter:
         payload: ReservaPayload,
         _principal=Depends(requiere_rol(1, 2)),
     ):
-        if payload.id_docente is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Se requiere el docente asociado a la reserva",
-            )
-        return service.actualizar_reserva(id_reserva, payload.model_dump())
+        data = _resolver_id_clase(payload.model_dump())
+        return service.actualizar_reserva(id_reserva, data)
 
     @router.delete("/reservas/{id_reserva}")
     def cancelar(id_reserva: int, principal=Depends(usuario_actual)):

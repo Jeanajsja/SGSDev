@@ -18,12 +18,20 @@ def listar(service: ReservaService = Depends(get_reserva_service)):
 
 @router.post("/reservas")
 def crear(payload: ReservaPayload, service: ReservaService = Depends(get_reserva_service)):
-    return service.crear_reserva(payload.model_dump())
+    try:
+        data = payload.as_reserva_data()
+    except ValueError as e:
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=422)
+    return service.crear_reserva(data)
 
 
 @router.put("/reservas/{id_reserva}")
 def actualizar(id_reserva: int, payload: ReservaPayload, service: ReservaService = Depends(get_reserva_service)):
-    return service.actualizar_reserva(id_reserva, payload.model_dump())
+    try:
+        data = payload.as_reserva_data()
+    except ValueError as e:
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=422)
+    return service.actualizar_reserva(id_reserva, data)
 
 
 @router.delete("/reservas/{id_reserva}")

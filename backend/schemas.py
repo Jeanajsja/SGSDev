@@ -26,7 +26,17 @@ class ReservaPayload(BaseModel):
     hora_inicio: str
     hora_fin: Optional[str] = None
     id_salon: int
-    id_docente: int
+    id_clase: Optional[int] = None
+    id_docente: Optional[int] = None
+
+    def as_reserva_data(self) -> dict:
+        data = self.model_dump()
+        id_clase = data.get("id_clase") if data.get("id_clase") is not None else data.get("id_docente")
+        if id_clase is None:
+            raise ValueError("Se requiere el ID clase de la reserva")
+        data["id_clase"] = id_clase
+        data["id_docente"] = id_clase  # columna histórica en BD
+        return data
 
 
 class DocenteCreate(BaseModel):
