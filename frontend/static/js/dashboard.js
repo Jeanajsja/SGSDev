@@ -1042,6 +1042,22 @@ function editarReserva(id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_cl
     prepararModal('reserva', { id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_clase, id_docente: id_clase });
 }
 
+function minutosDeHora(hora) {
+    const [h, m] = String(hora || '00:00').substring(0, 5).split(':').map(Number);
+    return (h * 60) + m;
+}
+
+function validarDuracionClase(horaInicio, horaFin) {
+    const duracion = minutosDeHora(horaFin) - minutosDeHora(horaInicio);
+    if (duracion <= 0) {
+        return "No es posible realizar la reserva: la hora de fin debe ser mayor que la de inicio";
+    }
+    if (duracion > 120) {
+        return "No es posible realizar la reserva: una clase no puede durar más de 2 horas";
+    }
+    return null;
+}
+
 async function enviarFormulario(e, tipo) {
     e.preventDefault();
     const user = JSON.parse(sessionStorage.getItem('user'));
@@ -1049,27 +1065,27 @@ async function enviarFormulario(e, tipo) {
     let endpoint = `${API_URL}/${tipo}s`;
     let method = 'POST';
     
-    if (tipo === 'reserva') {
+    if (tipo === 'reserva' || tipo === 'editar_reserva') {
         const id_clase_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-clase').value;
-        data = { 
-            fecha: document.getElementById('m-fecha').value, 
-            hora_inicio: document.getElementById('m-inicio').value, 
-            hora_fin: document.getElementById('m-fin').value,
-            id_salon: parseInt(document.getElementById('m-salon').value), 
+        const hora_inicio = document.getElementById('m-inicio').value;
+        const hora_fin = document.getElementById('m-fin').value;
+        const errorClase = validarDuracionClase(hora_inicio, hora_fin);
+        if (errorClase) {
+            alert(errorClase);
+            return;
+        }
+        data = {
+            fecha: document.getElementById('m-fecha').value,
+            hora_inicio,
+            hora_fin,
+            id_salon: parseInt(document.getElementById('m-salon').value),
             id_clase: parseInt(id_clase_val)
         };
-    } else if (tipo === 'editar_reserva') {
-        const id_reserva = document.getElementById('m-reserva-id').value;
-        const id_clase_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-clase').value;
-        data = { 
-            fecha: document.getElementById('m-fecha').value, 
-            hora_inicio: document.getElementById('m-inicio').value, 
-            hora_fin: document.getElementById('m-fin').value,
-            id_salon: parseInt(document.getElementById('m-salon').value), 
-            id_clase: parseInt(id_clase_val)
-        };
-        endpoint = `${API_URL}/reservas/${id_reserva}`;
-        method = 'PUT';
+        if (tipo === 'editar_reserva') {
+            const id_reserva = document.getElementById('m-reserva-id').value;
+            endpoint = `${API_URL}/reservas/${id_reserva}`;
+            method = 'PUT';
+        }
     } else if (tipo === 'salon') {
         data = { 
             nombre: document.getElementById('m-nom').value, 

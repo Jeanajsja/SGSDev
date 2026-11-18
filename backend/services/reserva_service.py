@@ -2,9 +2,8 @@ from datetime import datetime, timedelta
 from interfaces.reserva_repository import IReservaRepository
 
 HORAS_MINIMAS_CANCELACION = 8
+MAX_HORAS_CLASE = 2
 MAX_HORAS_DIA = 8
-MAX_HORAS_DIA_EXTENDIDO = 10
-MAX_DIAS_EXTENDIDOS = 2
 MAX_HORAS_SEMANA = 46
 
 
@@ -31,10 +30,14 @@ class ReservaService:
         h_fin = data.get("hora_fin")
         if not h_fin:
             try:
-                t_ini = datetime.strptime(h_ini, "%H:%M")
-                h_fin = (t_ini + timedelta(hours=2)).strftime("%H:%M")
+                t_ini = datetime.strptime(str(h_ini)[:5], "%H:%M")
+                h_fin = (t_ini + timedelta(hours=MAX_HORAS_CLASE)).strftime("%H:%M")
             except Exception:
                 h_fin = "22:00"
+
+        error_duracion = self._validar_duracion_clase(h_ini, h_fin)
+        if error_duracion:
+            return error_duracion
 
         horas_nuevas = self._duracion_horas(h_ini, h_fin)
         error_carga = self._validar_carga(data["id_docente"], data["fecha"], horas_nuevas)
@@ -54,6 +57,17 @@ class ReservaService:
         return {"status": "ok", "message": "Reserva confirmada en Supabase"}
 
     def actualizar_reserva(self, id_reserva, data):
+        error_duracion = self._validar_duracion_clase(data["hora_inicio"], data["hora_fin"])
+        if error_duracion:
+            return error_duracion
+
+        horas_nuevas = self._duracion_horas(data["hora_inicio"], data["hora_fin"])
+        error_carga = self._validar_carga(
+            data["id_docente"], data["fecha"], horas_nuevas, excluir_id=id_reserva
+        )
+        if error_carga:
+            return error_carga
+
         try:
             actualizadas = self._repository.actualizar(
                 id_reserva,
@@ -122,53 +136,64 @@ class ReservaService:
         t_fin = datetime.strptime(str(hora_fin)[:5], "%H:%M")
         return max((t_fin - t_ini).total_seconds() / 3600.0, 0)
 
-    def _validar_carga(self, id_docente, fecha, horas_nuevas):
+    def _validar_duracion_clase(self, hora_inicio, hora_fin):
+        horas = self._duracion_horas(hora_inicio, hora_fin)
+        if horas <= 0:
+            return {
+                "status": "error",
+                "message": "No es posible realizar la reserva: la hora de fin debe ser mayor que la de inicio",
+            }
+        if horas > MAX_HORAS_CLASE:
+            return {
+                "status": "error",
+                "message": (
+                    "No es posible realizar la reserva: una clase no puede durar más de "
+                    f"{MAX_HORAS_CLASE} horas"
+                ),
+            }
+        return None
+
+    def _validar_carga(self, id_docente, fecha, horas_nuevas, excluir_id=None):
         activas = [
             r
             for r in self._repository.listar_detalle()
-            if r.get("id_docente") == id_docente and (r.get("estado") or "").lower() != "cancelada"
+            if r.get("id_docente") == id_docente
+            and (r.get("estado") or "").lower() != "cancelada"
+            and (excluir_id is None or r.get("id_reserva") != excluir_id)
         ]
         inicio_semana = self._lunes_de(fecha)
         fin_semana = inicio_semana + timedelta(days=6)
         horas_por_dia = {}
         for r in activas:
-            dia = datetime.strptime(str(r["fecha"]), "%Y-%m-%d").date()
+            dia = datetime.strptime(str(r["fecha"])[:10], "%Y-%m-%d").date()
             if inicio_semana <= dia <= fin_semana:
-                clave = str(r["fecha"])
+                clave = str(r["fecha"])[:10]
                 horas_por_dia[clave] = horas_por_dia.get(clave, 0.0) + self._duracion_horas(
                     r["hora_inicio"], r["hora_fin"]
                 )
 
-        horas_dia = horas_por_dia.get(str(fecha), 0.0)
-        total_dia = horas_dia + horas_nuevas
-        if total_dia > MAX_HORAS_DIA_EXTENDIDO:
+        fecha_clave = str(fecha)[:10]
+        total_dia = horas_por_dia.get(fecha_clave, 0.0) + horas_nuevas
+        if total_dia > MAX_HORAS_DIA:
             return {
                 "status": "error",
-                "message": f"El docente no puede agendar más de {MAX_HORAS_DIA_EXTENDIDO} horas al día",
+                "message": (
+                    "No es posible realizar la reserva: solo se pueden agendar máximo "
+                    f"{MAX_HORAS_DIA} horas al día"
+                ),
             }
-        if total_dia > MAX_HORAS_DIA and horas_dia <= MAX_HORAS_DIA:
-            dias_extendidos = sum(
-                1
-                for dia, horas in horas_por_dia.items()
-                if dia != str(fecha) and horas > MAX_HORAS_DIA
-            )
-            if dias_extendidos >= MAX_DIAS_EXTENDIDOS:
-                return {
-                    "status": "error",
-                    "message": (
-                        f"El docente solo puede tener {MAX_DIAS_EXTENDIDOS} días de "
-                        f"{MAX_HORAS_DIA_EXTENDIDO} horas; el resto máximo {MAX_HORAS_DIA} horas diarias"
-                    ),
-                }
 
         horas_semana = sum(horas_por_dia.values())
         if horas_semana + horas_nuevas > MAX_HORAS_SEMANA:
             return {
                 "status": "error",
-                "message": f"El docente no puede agendar más de {MAX_HORAS_SEMANA} horas semanales",
+                "message": (
+                    "No es posible realizar la reserva: no se pueden agendar más de "
+                    f"{MAX_HORAS_SEMANA} horas semanales"
+                ),
             }
         return None
 
     def _lunes_de(self, fecha):
-        dia = datetime.strptime(str(fecha), "%Y-%m-%d").date()
+        dia = datetime.strptime(str(fecha)[:10], "%Y-%m-%d").date()
         return dia - timedelta(days=dia.weekday())
