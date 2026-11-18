@@ -2,26 +2,26 @@ INSERT INTO public.salon (nombre, capacidad, estado, ubicacion)
 SELECT v.nombre, 20, 'disponible', v.ubicacion
 FROM (
     VALUES
-        ('Salon1', 'Edificio principal'),
-        ('Salon2', 'Edificio principal'),
-        ('Salon3', 'Edificio principal'),
-        ('Salon4', 'Edificio principal'),
-        ('Salon5', 'Edificio principal'),
-        ('Salon6', 'Edificio principal'),
-        ('Salon7', 'Edificio principal'),
-        ('Salon8', 'Edificio principal'),
-        ('Salon9', 'Edificio principal'),
-        ('Salon10', 'Edificio principal'),
-        ('Lab1', 'Laboratorios'),
-        ('Lab2', 'Laboratorios'),
-        ('Lab3', 'Laboratorios'),
-        ('Lab4', 'Laboratorios'),
-        ('Lab5', 'Laboratorios'),
-        ('Lab6', 'Laboratorios'),
-        ('Lab7', 'Laboratorios'),
-        ('Lab8', 'Laboratorios'),
-        ('Lab9', 'Laboratorios'),
-        ('Lab10', 'Laboratorios')
+        ('Salon1', 'Sede:CLS Edificio:O'),
+        ('Salon2', 'Sede:CLS Edificio:O'),
+        ('Salon3', 'Sede:CLS Edificio:O'),
+        ('Salon4', 'Sede:CLS Edificio:O'),
+        ('Salon5', 'Sede:CLS Edificio:O'),
+        ('Salon6', 'Sede:CLS Edificio:O'),
+        ('Salon7', 'Sede:CLS Edificio:O'),
+        ('Salon8', 'Sede:CLS Edificio:O'),
+        ('Salon9', 'Sede:CLS Edificio:O'),
+        ('Salon10', 'Sede:CLS Edificio:O'),
+        ('Lab1', 'Sede:CLS Edificio:O'),
+        ('Lab2', 'Sede:CLS Edificio:O'),
+        ('Lab3', 'Sede:CLS Edificio:O'),
+        ('Lab4', 'Sede:CLS Edificio:O'),
+        ('Lab5', 'Sede:CLS Edificio:O'),
+        ('Lab6', 'Sede:CLS Edificio:O'),
+        ('Lab7', 'Sede:CLS Edificio:O'),
+        ('Lab8', 'Sede:CLS Edificio:O'),
+        ('Lab9', 'Sede:CLS Edificio:O'),
+        ('Lab10', 'Sede:CLS Edificio:O')
 ) AS v(nombre, ubicacion)
 WHERE NOT EXISTS (
     SELECT 1 FROM public.salon s WHERE lower(s.nombre) = lower(v.nombre)

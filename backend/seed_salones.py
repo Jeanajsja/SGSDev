@@ -7,9 +7,12 @@ SALONES = [f"Salon{i}" for i in range(1, 11)]
 LABS = [f"Lab{i}" for i in range(1, 11)]
 
 
+UBICACION_DEFAULT = "Sede:CLS Edificio:O"
+
+
 def _nombres_base():
-    return [(nombre, "Edificio principal") for nombre in SALONES] + [
-        (nombre, "Laboratorios") for nombre in LABS
+    return [(nombre, UBICACION_DEFAULT) for nombre in SALONES] + [
+        (nombre, UBICACION_DEFAULT) for nombre in LABS
     ]
 
 
