@@ -7,5 +7,6 @@ sys.path.insert(0, os.path.join(_ROOT, "backend"))
 sys.path.insert(0, os.path.join(_ROOT, "services"))
 
 from main import app
-return {
 
+# local: python -m uvicorn wsgi:app --reload --port 5000
+# server: gunicorn -k uvicorn.workers.UvicornWorker wsgi:app --bind 0.0.0.0:5000
