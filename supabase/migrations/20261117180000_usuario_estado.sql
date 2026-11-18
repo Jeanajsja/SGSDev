@@ -1,0 +1,2 @@
+ALTER TABLE public.usuario
+    ADD COLUMN IF NOT EXISTS estado VARCHAR(30) NOT NULL DEFAULT 'activo';

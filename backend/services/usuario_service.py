@@ -45,9 +45,9 @@ class UsuarioService:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
             mensaje = str(e).lower()
-            if "duplicate" in mensaje or "existe" in mensaje:
+            if "duplicate" in mensaje or "unique" in mensaje:
                 return {"status": "error", "message": "Solo se permite un registro por correo"}
-            return {"status": "error", "message": f"El correo ya existe o hay un error: {str(e)}"}
+            return {"status": "error", "message": f"No se pudo crear la cuenta: {str(e)}"}
         return {"status": "ok", "message": "Cuenta creada exitosamente", "estado": estado}
 
     def restablecer_password(self, email, nueva_password):

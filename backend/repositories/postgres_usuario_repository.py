@@ -53,7 +53,8 @@ class PostgresUsuarioRepository(IUsuarioRepository, ILoginRepository):
                     """,
                     (nombre, email, password_hash, id_rol),
                 )
-            id_usuario = cursor.fetchone()[0]
+            fila = cursor.fetchone()
+            id_usuario = fila["id_usuario"] if isinstance(fila, dict) else fila[0]
             if id_rol == ROL_DOCENTE:
                 _guardar_docente(cursor, id_usuario)
             conn.commit()
