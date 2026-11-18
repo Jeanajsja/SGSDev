@@ -1,6 +1,20 @@
 const API_URL = window.location.origin + "/api";
 let seccionActual = 'dashboard';
 let chartInstance = null;
+let agendaFecha = null;
+
+const AGENDA_INICIO = 7;
+const AGENDA_FIN = 22;
+const AGENDA_COLORES = [
+    "#0e4a8a",
+    "#1a66b8",
+    "#7c3aed",
+    "#be123c",
+    "#0f766e",
+    "#c2410c",
+    "#0369a1",
+    "#4f46e5",
+];
 
 async function apiFetch(url, options = {}) {
     const token = sessionStorage.getItem('access_token');
@@ -125,9 +139,13 @@ async function mostrarSeccion(seccion) {
         if (user.id_rol != 1) btn.style.display = 'none'; // US-05: Solo admin puede registrar
         await cargarTabla('salones');
     } else if (seccion === 'reservas_globales') {
-        tit.innerText = "Reservas Globales";
-        btn.style.display = 'none'; // No se crean desde este panel global
-        await cargarTabla('reservas_globales');
+        tit.innerText = "Agenda de Salones";
+        btn.innerHTML = '<i class="fas fa-plus"></i> NUEVA RESERVA';
+        btn.onclick = () => prepararModal('reserva');
+        btn.style.display = 'flex';
+        mostrarVistaAgenda(true);
+        await cargarAgendaSalones();
+        return;
     } else if (seccion === 'docentes') {
         tit.innerText = "Listado de Docentes";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR DOCENTE';
@@ -145,6 +163,190 @@ async function mostrarSeccion(seccion) {
         }
         await cargarTabla('roles');
     }
+    mostrarVistaAgenda(false);
+}
+
+function mostrarVistaAgenda(activa) {
+    const agenda = document.getElementById('seccion-agenda');
+    const tabla = document.getElementById('seccion-tabla');
+    const stats = document.getElementById('seccion-stats');
+    const grafico = document.getElementById('seccion-grafico');
+    if (agenda) agenda.classList.toggle('hidden', !activa);
+    if (tabla) tabla.classList.toggle('hidden', activa);
+    if (stats) stats.classList.toggle('hidden', activa);
+    if (grafico) grafico.classList.toggle('hidden', activa);
+}
+
+function fechaLocalISO(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatearFechaAgenda(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const fecha = new Date(y, m - 1, d);
+    return fecha.toLocaleDateString('es-CO', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+}
+
+function minutosDesdeInicio(hora) {
+    const [h, m] = String(hora || '00:00').substring(0, 5).split(':').map(Number);
+    return (h * 60 + m) - (AGENDA_INICIO * 60);
+}
+
+function colorAgenda(clave) {
+    const texto = String(clave || '');
+    let hash = 0;
+    for (let i = 0; i < texto.length; i += 1) {
+        hash = (hash + texto.charCodeAt(i) * (i + 1)) % AGENDA_COLORES.length;
+    }
+    return AGENDA_COLORES[hash];
+}
+
+function irAgendaHoy() {
+    agendaFecha = fechaLocalISO(new Date());
+    const input = document.getElementById('agenda-fecha');
+    if (input) input.value = agendaFecha;
+    cargarAgendaSalones();
+}
+
+function cambiarDiaAgenda(delta) {
+    const base = agendaFecha || fechaLocalISO(new Date());
+    const [y, m, d] = base.split('-').map(Number);
+    const fecha = new Date(y, m - 1, d);
+    fecha.setDate(fecha.getDate() + delta);
+    agendaFecha = fechaLocalISO(fecha);
+    const input = document.getElementById('agenda-fecha');
+    if (input) input.value = agendaFecha;
+    cargarAgendaSalones();
+}
+
+async function cargarAgendaSalones() {
+    const board = document.getElementById('agenda-board');
+    const input = document.getElementById('agenda-fecha');
+    const label = document.getElementById('agenda-fecha-label');
+    if (!board || !input) return;
+
+    if (!input.value) {
+        input.value = agendaFecha || fechaLocalISO(new Date());
+    }
+    agendaFecha = input.value;
+    if (label) {
+        label.textContent = formatearFechaAgenda(agendaFecha);
+    }
+
+    board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">Cargando agenda...</div>';
+
+    try {
+        const [resSalones, resReservas] = await Promise.all([
+            apiFetch(`${API_URL}/salones`),
+            apiFetch(`${API_URL}/reservas`),
+        ]);
+        const salonesData = await leerRespuestaApi(resSalones);
+        const reservasData = await leerRespuestaApi(resReservas);
+
+        const salones = (salonesData.data || [])
+            .slice()
+            .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es', { numeric: true }));
+        const reservasDia = (reservasData.data || []).filter((r) => {
+            const fecha = String(r.fecha || '').substring(0, 10);
+            const estado = String(r.estado || '').toLowerCase();
+            return fecha === agendaFecha && estado !== 'cancelada';
+        });
+
+        document.getElementById('stat-reservas').innerText = String(reservasDia.length);
+        renderAgendaBoard(salones, reservasDia);
+    } catch (e) {
+        board.innerHTML = `<div class="p-16 text-center text-red-500 font-bold">${e.message || 'No se pudo cargar la agenda'}</div>`;
+    }
+}
+
+function renderAgendaBoard(salones, reservasDia) {
+    const board = document.getElementById('agenda-board');
+    if (!board) return;
+
+    if (!salones.length) {
+        board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">No hay salones para mostrar</div>';
+        return;
+    }
+
+    const totalMin = (AGENDA_FIN - AGENDA_INICIO) * 60;
+    const grid = document.createElement('div');
+    grid.className = 'agenda-grid';
+    grid.style.setProperty('--agenda-cols', String(salones.length));
+
+    const hoursCol = document.createElement('div');
+    hoursCol.className = 'agenda-hours';
+    const hoursHead = document.createElement('div');
+    hoursHead.className = 'agenda-column-head';
+    hoursHead.textContent = 'Hora';
+    hoursCol.appendChild(hoursHead);
+    for (let h = AGENDA_INICIO; h <= AGENDA_FIN; h += 1) {
+        const mark = document.createElement('div');
+        mark.className = 'agenda-hour-mark';
+        const top = ((h - AGENDA_INICIO) * 60 / totalMin) * 100;
+        mark.style.top = `calc(48px + ${(top / 100) * (600 - 48)}px)`;
+        mark.textContent = `${String(h).padStart(2, '0')}:00`;
+        hoursCol.appendChild(mark);
+    }
+    grid.appendChild(hoursCol);
+
+    salones.forEach((salon) => {
+        const col = document.createElement('div');
+        col.className = 'agenda-column';
+
+        const head = document.createElement('div');
+        head.className = 'agenda-column-head';
+        head.innerHTML = `${salon.nombre}<span>${salon.ubicacion || 'Sin ubicación'} · cupo ${salon.capacidad ?? '--'}</span>`;
+        col.appendChild(head);
+
+        const delSalon = reservasDia.filter((r) => Number(r.id_salon) === Number(salon.id_salon));
+        if (!delSalon.length) {
+            const empty = document.createElement('div');
+            empty.className = 'agenda-empty';
+            empty.textContent = 'Sin reservas';
+            col.appendChild(empty);
+        } else {
+            delSalon.forEach((r) => {
+                const ini = String(r.hora_inicio || '00:00').substring(0, 5);
+                const fin = String(r.hora_fin || '00:00').substring(0, 5);
+                let start = minutosDesdeInicio(ini);
+                let end = minutosDesdeInicio(fin);
+                if (end <= start) end = start + 60;
+                start = Math.max(0, Math.min(start, totalMin));
+                end = Math.max(start + 20, Math.min(end, totalMin));
+
+                const topPx = 48 + (start / totalMin) * (600 - 48);
+                const heightPx = Math.max(42, ((end - start) / totalMin) * (600 - 48));
+
+                const slot = document.createElement('button');
+                slot.type = 'button';
+                slot.className = 'agenda-slot';
+                slot.style.top = `${topPx}px`;
+                slot.style.height = `${heightPx}px`;
+                slot.style.background = colorAgenda(r.docente || r.id_docente || salon.nombre);
+                slot.innerHTML = `<strong>${ini} - ${fin}</strong><small>${r.docente || 'Docente'}</small><small>${salon.nombre}</small>`;
+                slot.title = `${r.docente || 'Docente'} · ${ini}-${fin}`;
+                slot.onclick = () => {
+                    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+                    if (user.id_rol == 1 || user.id_rol == 2) {
+                        editarReserva(r.id_reserva, r.fecha, ini, fin, r.id_salon, r.id_docente);
+                    }
+                };
+                col.appendChild(slot);
+            });
+        }
+
+        grid.appendChild(col);
+    });
+
+    board.replaceChildren(grid);
 }
 
 async function cargarTabla(tipo) {

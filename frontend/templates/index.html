@@ -55,7 +55,7 @@
                 <i class="fas fa-door-open w-5"></i> Gestión de Salones
             </div>
             <div onclick="mostrarSeccion('reservas_globales')" id="nav-reservas" class="sidebar-item">
-                <i class="fas fa-calendar-check w-5"></i> Reservas Globales
+                <i class="fas fa-calendar-check w-5"></i> Agenda de Salones
             </div>
             <div onclick="mostrarSeccion('docentes')" id="nav-docentes" class="sidebar-item">
                 <i class="fas fa-user-graduate w-5"></i> Lista de Docentes
@@ -101,8 +101,35 @@
                 </div>
             </div>
 
+            <!-- Agenda por salón (día seleccionado) -->
+            <section id="seccion-agenda" class="hidden space-y-4">
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Agenda diaria</p>
+                        <h4 id="agenda-fecha-label" class="text-lg font-black text-ucc-texto">Hoy</h4>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="button" onclick="cambiarDiaAgenda(-1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Día anterior">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <label class="flex items-center gap-2 text-sm font-bold text-ucc-texto">
+                            <i class="fas fa-calendar-day text-ucc-azul"></i>
+                            <input type="date" id="agenda-fecha" class="border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-ucc-dorado bg-white" onchange="cargarAgendaSalones()">
+                        </label>
+                        <button type="button" onclick="irAgendaHoy()" class="px-4 py-2 rounded-xl bg-ucc-azul text-white text-xs font-black uppercase tracking-wide hover:bg-ucc-navy transition">Hoy</button>
+                        <button type="button" onclick="cambiarDiaAgenda(1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Día siguiente">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" onclick="cargarAgendaSalones()" class="p-2 text-ucc-azul hover:bg-ucc-plata rounded-lg transition" aria-label="Actualizar agenda">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="agenda-board" class="agenda-board overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm"></div>
+            </section>
+
             <!-- Tabla Maestra (Cubre todas las consultas del PDF) -->
-            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div id="seccion-tabla" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-6 border-b flex justify-between items-center bg-white">
                     <h4 id="tabla-titulo" class="text-xs font-black text-slate-400 uppercase tracking-widest">Listado de Datos</h4>
                     <button onclick="recargarSeccionActual()" class="p-2 text-ucc-azul hover:bg-ucc-plata rounded-lg transition"><i class="fas fa-sync-alt"></i></button>
