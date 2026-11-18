@@ -1,5 +1,8 @@
+import logging
 import os
 import sys
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,13 +15,32 @@ from controllers.salon_controller import router as salon_router
 from controllers.docente_controller import router as docente_router
 from controllers.reserva_controller import router as reserva_router
 from controllers.rol_controller import router as rol_router
+from database.db_config import get_connection
+from seed_superadmin import asegurar_superadmin
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend/static"))
 
 
+@asynccontextmanager
+async def lifespan(_application: FastAPI):
+    try:
+        creado = asegurar_superadmin(get_connection)
+        if creado:
+            logger.info("Superadministrador ancla creado en el arranque")
+    except Exception:
+        logger.exception("No se pudo aprovisionar el superadministrador ancla")
+    yield
+
+
 def create_app() -> FastAPI:
-    application = FastAPI(title="SGSDev", description="Sistema de Gestión de Salones")
+    application = FastAPI(
+        title="SGSDev",
+        description="Sistema de Gestión de Salones",
+        lifespan=lifespan,
+    )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -35,12 +57,6 @@ def create_app() -> FastAPI:
     return application
 
 
-app = create_app()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)
 app = create_app()
 
 if __name__ == "__main__":

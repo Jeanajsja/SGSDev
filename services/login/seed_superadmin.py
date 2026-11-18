@@ -1,7 +1,10 @@
+import logging
 import os
 
 from werkzeug.security import generate_password_hash
 from superadmin_ancla import ROL_SUPERADMIN, SUPERADMIN_ANCLA, SUPERADMIN_NOMBRE
+
+logger = logging.getLogger(__name__)
 
 
 def asegurar_superadmin(connection_factory, password=None):
@@ -17,19 +20,32 @@ def asegurar_superadmin(connection_factory, password=None):
     try:
         cursor = conn.cursor()
         cursor.execute(
-            """
-            INSERT INTO usuario (nombre, email, password, id_rol)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT DO NOTHING
-            """,
-            (
-                SUPERADMIN_NOMBRE,
-                SUPERADMIN_ANCLA,
-                generate_password_hash(password),
-                ROL_SUPERADMIN,
-            ),
+            "SELECT id_usuario FROM usuario WHERE lower(email) = lower(%s)",
+            (SUPERADMIN_ANCLA,),
         )
+        if cursor.fetchone():
+            return False
+
+        password_hash = generate_password_hash(password)
+        try:
+            cursor.execute(
+                """
+                INSERT INTO usuario (nombre, email, password, id_rol, estado)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (SUPERADMIN_NOMBRE, SUPERADMIN_ANCLA, password_hash, ROL_SUPERADMIN, "activo"),
+            )
+        except Exception:
+            conn.rollback()
+            cursor.execute(
+                """
+                INSERT INTO usuario (nombre, email, password, id_rol)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (SUPERADMIN_NOMBRE, SUPERADMIN_ANCLA, password_hash, ROL_SUPERADMIN),
+            )
         conn.commit()
+        logger.info("Cuenta ancla aprovisionada: %s", SUPERADMIN_ANCLA)
+        return True
     finally:
         conn.close()
-    return True

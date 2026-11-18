@@ -1,7 +1,15 @@
+import os
+import sys
+
 from interfaces.login_repository import ILoginRepository
 from interfaces.password_verifier import IPasswordVerifier
 from models.usuario_factory import usuario_desde_fila
-from services.common.auth import crear_token_acceso
+
+_SERVICES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "services"))
+if _SERVICES_DIR not in sys.path:
+    sys.path.insert(0, _SERVICES_DIR)
+
+from common.auth import crear_token_acceso  # noqa: E402
 
 
 class LoginService:

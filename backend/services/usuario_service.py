@@ -2,9 +2,8 @@ from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.usuario_repository import IUsuarioRepository
 from services.password_policy import validar_password
+from superadmin_ancla import ROL_SUPERADMIN, SUPERADMIN_ANCLA
 
-SUPERADMIN_ANCLA = "lfpaez30@ucatolica.edu.co"
-ROL_SUPERADMIN = 1
 ROLES_VALIDOS = {1, 2, 3}
 
 

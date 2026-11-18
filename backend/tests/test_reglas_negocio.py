@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -229,7 +230,8 @@ class TestPasswordYRegistro(unittest.TestCase):
 
         self.service.cambiar_rol(usuario["id_usuario"], 3, ANCLA)
         self.assertEqual(self.repo.buscar_por_id(usuario["id_usuario"])["estado"], "activo")
-        self.assertEqual(login.login("pedro@gmail.com", CLAVE)["status"], "ok")
+        with patch.dict(os.environ, {"JWT_SECRET": "test-secret-" * 4}):
+            self.assertEqual(login.login("pedro@gmail.com", CLAVE)["status"], "ok")
 
 
 if __name__ == "__main__":
