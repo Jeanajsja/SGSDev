@@ -2,9 +2,14 @@ const API_URL = window.location.origin + "/api";
 let seccionActual = 'dashboard';
 let chartInstance = null;
 let agendaFecha = null;
+let agendaVista = 'semana';
+let agendaCache = { salones: [], reservas: [] };
+let navegacionId = 0;
 
 const AGENDA_INICIO = 7;
 const AGENDA_FIN = 22;
+const AGENDA_TRACK_H = 600;
+const AGENDA_HEAD_H = 56;
 const AGENDA_COLORES = [
     "#0e4a8a",
     "#1a66b8",
@@ -113,10 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function mostrarSeccion(seccion) {
+    const requestId = ++navegacionId;
     seccionActual = seccion;
     const user = JSON.parse(sessionStorage.getItem('user'));
     const btn = document.getElementById('btn-accion-principal');
     const tit = document.getElementById('titulo-seccion');
+    const esAgenda = seccion === 'reservas_globales';
 
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('sidebar-active'));
     
@@ -124,34 +131,37 @@ async function mostrarSeccion(seccion) {
     let sideId = 'nav-' + seccion.split('_')[0];
     document.getElementById(sideId)?.classList.add('sidebar-active');
 
+    // Cambiar layout YA (antes del await) para no mostrar datos de la pestaña anterior
+    mostrarVistaAgenda(esAgenda);
+    prepararCargaSeccion(esAgenda);
+
     btn.style.display = 'flex';
     
     if (seccion === 'dashboard') {
         tit.innerText = user.id_rol == 3 ? "Mis Reservas" : "Dashboard General";
         btn.innerHTML = '<i class="fas fa-plus"></i> NUEVA RESERVA';
         btn.onclick = () => prepararModal('reserva');
-        await cargarTabla('reservas');
+        await cargarTabla('reservas', requestId);
+        if (requestId !== navegacionId) return;
         initChart();
     } else if (seccion === 'salones') {
         tit.innerText = "Gestión de Salones";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR SALÓN';
         btn.onclick = () => prepararModal('salon');
         if (user.id_rol != 1) btn.style.display = 'none'; // US-05: Solo admin puede registrar
-        await cargarTabla('salones');
+        await cargarTabla('salones', requestId);
     } else if (seccion === 'reservas_globales') {
         tit.innerText = "Agenda de Salones";
         btn.innerHTML = '<i class="fas fa-plus"></i> NUEVA RESERVA';
         btn.onclick = () => prepararModal('reserva');
         btn.style.display = 'flex';
-        mostrarVistaAgenda(true);
-        await cargarAgendaSalones();
-        return;
+        await cargarAgendaSalones(requestId);
     } else if (seccion === 'docentes') {
         tit.innerText = "Listado de Docentes";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR DOCENTE';
         btn.onclick = () => prepararModal('docente');
         if (user.id_rol != 1) btn.style.display = 'none'; // US-13: Solo admin
-        await cargarTabla('docentes');
+        await cargarTabla('docentes', requestId);
     } else if (seccion === 'roles') {
         tit.innerText = "Control de Roles";
         if (esSuperadminAncla(user)) {
@@ -161,9 +171,20 @@ async function mostrarSeccion(seccion) {
         } else {
             btn.style.display = 'none';
         }
-        await cargarTabla('roles');
+        await cargarTabla('roles', requestId);
     }
-    mostrarVistaAgenda(false);
+}
+
+function prepararCargaSeccion(esAgenda) {
+    const head = document.getElementById('tabla-head');
+    const body = document.getElementById('tabla-body');
+    const board = document.getElementById('agenda-board');
+    const stat = document.getElementById('stat-reservas');
+    if (head) head.innerHTML = '';
+    if (body) mostrarTablaVacia(body, 5, "Cargando...");
+    if (board) board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">Cargando agenda...</div>';
+    if (stat) stat.innerText = '--';
+    if (!esAgenda && board) board.replaceChildren();
 }
 
 function mostrarVistaAgenda(activa) {
@@ -171,10 +192,18 @@ function mostrarVistaAgenda(activa) {
     const tabla = document.getElementById('seccion-tabla');
     const stats = document.getElementById('seccion-stats');
     const grafico = document.getElementById('seccion-grafico');
-    if (agenda) agenda.classList.toggle('hidden', !activa);
-    if (tabla) tabla.classList.toggle('hidden', activa);
-    if (stats) stats.classList.toggle('hidden', activa);
-    if (grafico) grafico.classList.toggle('hidden', activa);
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const setHidden = (el, hide) => {
+        if (!el) return;
+        el.classList.toggle('hidden', hide);
+        if (hide) el.style.display = 'none';
+        else el.style.removeProperty('display');
+    };
+    setHidden(agenda, !activa);
+    setHidden(tabla, activa);
+    setHidden(stats, activa);
+    // Docente nunca ve el gráfico; no reactivar su display al salir de agenda
+    setHidden(grafico, activa || parseInt(user.id_rol) === 3);
 }
 
 function fechaLocalISO(date = new Date()) {
@@ -184,9 +213,33 @@ function fechaLocalISO(date = new Date()) {
     return `${y}-${m}-${d}`;
 }
 
-function formatearFechaAgenda(iso) {
-    const [y, m, d] = iso.split('-').map(Number);
-    const fecha = new Date(y, m - 1, d);
+function parseFechaISO(iso) {
+    const [y, m, d] = String(iso || '').split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function inicioSemana(fecha) {
+    const d = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day; // lunes como inicio
+    d.setDate(d.getDate() + diff);
+    return d;
+}
+
+function formatearRangoAgenda(iso, vista) {
+    const fecha = parseFechaISO(iso);
+    if (vista === 'mes') {
+        return fecha.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    }
+    if (vista === 'semana') {
+        const ini = inicioSemana(fecha);
+        const fin = new Date(ini);
+        fin.setDate(ini.getDate() + 6);
+        const mismoMes = ini.getMonth() === fin.getMonth();
+        const a = ini.toLocaleDateString('es-CO', { day: 'numeric', month: mismoMes ? undefined : 'short' });
+        const b = fin.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+        return `${a} – ${b}`;
+    }
     return fecha.toLocaleDateString('es-CO', {
         weekday: 'long',
         day: 'numeric',
@@ -209,151 +262,386 @@ function colorAgenda(clave) {
     return AGENDA_COLORES[hash];
 }
 
+function nombreSalonAgenda(idSalon) {
+    const salon = (agendaCache.salones || []).find((s) => Number(s.id_salon) === Number(idSalon));
+    return salon?.nombre || `Salón ${idSalon}`;
+}
+
+function reservasActivas() {
+    return (agendaCache.reservas || []).filter((r) => String(r.estado || '').toLowerCase() !== 'cancelada');
+}
+
+function reservasEnRango(desdeISO, hastaISO) {
+    return reservasActivas().filter((r) => {
+        const fecha = String(r.fecha || '').substring(0, 10);
+        return fecha >= desdeISO && fecha <= hastaISO;
+    });
+}
+
+function sincronizarBotonesVistaAgenda() {
+    ['dia', 'semana', 'mes'].forEach((vista) => {
+        const btn = document.getElementById(`agenda-vista-${vista}`);
+        if (!btn) return;
+        btn.classList.toggle('agenda-view-btn-active', agendaVista === vista);
+    });
+}
+
+function cambiarVistaAgenda(vista) {
+    if (!['dia', 'semana', 'mes'].includes(vista)) return;
+    agendaVista = vista;
+    sincronizarBotonesVistaAgenda();
+    actualizarEtiquetaAgenda();
+    renderCalendarioAgenda();
+}
+
+function actualizarEtiquetaAgenda() {
+    const label = document.getElementById('agenda-fecha-label');
+    if (label && agendaFecha) {
+        label.textContent = formatearRangoAgenda(agendaFecha, agendaVista);
+    }
+}
+
 function irAgendaHoy() {
     agendaFecha = fechaLocalISO(new Date());
     const input = document.getElementById('agenda-fecha');
     if (input) input.value = agendaFecha;
-    cargarAgendaSalones();
+    actualizarEtiquetaAgenda();
+    renderCalendarioAgenda();
 }
 
-function cambiarDiaAgenda(delta) {
+function cambiarPeriodoAgenda(delta) {
     const base = agendaFecha || fechaLocalISO(new Date());
-    const [y, m, d] = base.split('-').map(Number);
-    const fecha = new Date(y, m - 1, d);
-    fecha.setDate(fecha.getDate() + delta);
+    const fecha = parseFechaISO(base);
+    if (agendaVista === 'mes') fecha.setMonth(fecha.getMonth() + delta);
+    else if (agendaVista === 'semana') fecha.setDate(fecha.getDate() + (delta * 7));
+    else fecha.setDate(fecha.getDate() + delta);
     agendaFecha = fechaLocalISO(fecha);
     const input = document.getElementById('agenda-fecha');
     if (input) input.value = agendaFecha;
-    cargarAgendaSalones();
+    actualizarEtiquetaAgenda();
+    renderCalendarioAgenda();
 }
 
-async function cargarAgendaSalones() {
+function abrirReservaDesdeAgenda(r) {
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    if (user.id_rol != 1 && user.id_rol != 2) return;
+    const ini = String(r.hora_inicio || '00:00').substring(0, 5);
+    const fin = String(r.hora_fin || '00:00').substring(0, 5);
+    editarReserva(r.id_reserva, r.fecha, ini, fin, r.id_salon, r.id_docente);
+}
+
+function irAgendaDia(iso) {
+    agendaFecha = iso;
+    agendaVista = 'dia';
+    const input = document.getElementById('agenda-fecha');
+    if (input) input.value = iso;
+    sincronizarBotonesVistaAgenda();
+    actualizarEtiquetaAgenda();
+    renderCalendarioAgenda();
+}
+
+async function cargarAgendaSalones(requestId = navegacionId) {
     const board = document.getElementById('agenda-board');
     const input = document.getElementById('agenda-fecha');
-    const label = document.getElementById('agenda-fecha-label');
     if (!board || !input) return;
+    if (requestId !== navegacionId || seccionActual !== 'reservas_globales') return;
 
     if (!input.value) {
         input.value = agendaFecha || fechaLocalISO(new Date());
     }
     agendaFecha = input.value;
-    if (label) {
-        label.textContent = formatearFechaAgenda(agendaFecha);
-    }
-
-    board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">Cargando agenda...</div>';
+    sincronizarBotonesVistaAgenda();
+    actualizarEtiquetaAgenda();
+    board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">Cargando calendario...</div>';
 
     try {
         const [resSalones, resReservas] = await Promise.all([
             apiFetch(`${API_URL}/salones`),
             apiFetch(`${API_URL}/reservas`),
         ]);
+        if (requestId !== navegacionId || seccionActual !== 'reservas_globales') return;
+
         const salonesData = await leerRespuestaApi(resSalones);
         const reservasData = await leerRespuestaApi(resReservas);
+        if (requestId !== navegacionId || seccionActual !== 'reservas_globales') return;
 
-        const salones = (salonesData.data || [])
+        agendaCache.salones = (salonesData.data || [])
             .slice()
             .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es', { numeric: true }));
-        const reservasDia = (reservasData.data || []).filter((r) => {
-            const fecha = String(r.fecha || '').substring(0, 10);
-            const estado = String(r.estado || '').toLowerCase();
-            return fecha === agendaFecha && estado !== 'cancelada';
-        });
+        agendaCache.reservas = reservasData.data || [];
 
-        document.getElementById('stat-reservas').innerText = String(reservasDia.length);
-        renderAgendaBoard(salones, reservasDia);
+        const activas = reservasActivas();
+        const stat = document.getElementById('stat-reservas');
+        if (stat) stat.innerText = String(activas.length);
+        renderCalendarioAgenda();
     } catch (e) {
+        if (requestId !== navegacionId || seccionActual !== 'reservas_globales') return;
         board.innerHTML = `<div class="p-16 text-center text-red-500 font-bold">${e.message || 'No se pudo cargar la agenda'}</div>`;
     }
 }
 
-function renderAgendaBoard(salones, reservasDia) {
+function renderCalendarioAgenda() {
     const board = document.getElementById('agenda-board');
-    if (!board) return;
-
-    if (!salones.length) {
-        board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">No hay salones para mostrar</div>';
-        return;
-    }
-
-    const totalMin = (AGENDA_FIN - AGENDA_INICIO) * 60;
-    const grid = document.createElement('div');
-    grid.className = 'agenda-grid';
-    grid.style.setProperty('--agenda-cols', String(salones.length));
-
-    const hoursCol = document.createElement('div');
-    hoursCol.className = 'agenda-hours';
-    const hoursHead = document.createElement('div');
-    hoursHead.className = 'agenda-column-head';
-    hoursHead.textContent = 'Hora';
-    hoursCol.appendChild(hoursHead);
-    for (let h = AGENDA_INICIO; h <= AGENDA_FIN; h += 1) {
-        const mark = document.createElement('div');
-        mark.className = 'agenda-hour-mark';
-        const top = ((h - AGENDA_INICIO) * 60 / totalMin) * 100;
-        mark.style.top = `calc(48px + ${(top / 100) * (600 - 48)}px)`;
-        mark.textContent = `${String(h).padStart(2, '0')}:00`;
-        hoursCol.appendChild(mark);
-    }
-    grid.appendChild(hoursCol);
-
-    salones.forEach((salon) => {
-        const col = document.createElement('div');
-        col.className = 'agenda-column';
-
-        const head = document.createElement('div');
-        head.className = 'agenda-column-head';
-        head.innerHTML = `${salon.nombre}<span>${salon.ubicacion || 'Sin ubicación'} · cupo ${salon.capacidad ?? '--'}</span>`;
-        col.appendChild(head);
-
-        const delSalon = reservasDia.filter((r) => Number(r.id_salon) === Number(salon.id_salon));
-        if (!delSalon.length) {
-            const empty = document.createElement('div');
-            empty.className = 'agenda-empty';
-            empty.textContent = 'Sin reservas';
-            col.appendChild(empty);
-        } else {
-            delSalon.forEach((r) => {
-                const ini = String(r.hora_inicio || '00:00').substring(0, 5);
-                const fin = String(r.hora_fin || '00:00').substring(0, 5);
-                let start = minutosDesdeInicio(ini);
-                let end = minutosDesdeInicio(fin);
-                if (end <= start) end = start + 60;
-                start = Math.max(0, Math.min(start, totalMin));
-                end = Math.max(start + 20, Math.min(end, totalMin));
-
-                const topPx = 48 + (start / totalMin) * (600 - 48);
-                const heightPx = Math.max(42, ((end - start) / totalMin) * (600 - 48));
-
-                const slot = document.createElement('button');
-                slot.type = 'button';
-                slot.className = 'agenda-slot';
-                slot.style.top = `${topPx}px`;
-                slot.style.height = `${heightPx}px`;
-                slot.style.background = colorAgenda(r.docente || r.id_docente || salon.nombre);
-                slot.innerHTML = `<strong>${ini} - ${fin}</strong><small>${r.docente || 'Docente'}</small><small>${salon.nombre}</small>`;
-                slot.title = `${r.docente || 'Docente'} · ${ini}-${fin}`;
-                slot.onclick = () => {
-                    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-                    if (user.id_rol == 1 || user.id_rol == 2) {
-                        editarReserva(r.id_reserva, r.fecha, ini, fin, r.id_salon, r.id_docente);
-                    }
-                };
-                col.appendChild(slot);
-            });
-        }
-
-        grid.appendChild(col);
-    });
-
-    board.replaceChildren(grid);
+    if (!board || seccionActual !== 'reservas_globales') return;
+    sincronizarBotonesVistaAgenda();
+    actualizarEtiquetaAgenda();
+    if (agendaVista === 'mes') renderAgendaMes(board);
+    else if (agendaVista === 'semana') renderAgendaSemana(board);
+    else renderAgendaDia(board);
 }
 
-async function cargarTabla(tipo) {
+function crearEventoAgenda(r, compacto = false) {
+    const ini = String(r.hora_inicio || '00:00').substring(0, 5);
+    const fin = String(r.hora_fin || '00:00').substring(0, 5);
+    const salon = r.salon || nombreSalonAgenda(r.id_salon);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = compacto ? 'cal-event cal-event-compact' : 'cal-event';
+    btn.style.cssText = `border:0;border-radius:8px;color:#fff;text-align:left;padding:${compacto ? '4px 6px' : '6px 8px'};background:${colorAgenda(r.docente || r.id_docente || salon)};box-shadow:0 6px 14px rgba(7,24,51,.16);cursor:pointer;overflow:hidden;`;
+    btn.title = `${ini}-${fin} · ${r.docente || 'Docente'} · ${salon}`;
+    if (compacto) {
+        btn.style.fontSize = '10px';
+        btn.style.fontWeight = '700';
+        btn.textContent = `${ini} ${salon}`;
+    } else {
+        btn.innerHTML = `<strong style="display:block;font-size:11px;font-weight:800">${ini} - ${fin}</strong><span style="display:block;font-size:10px;margin-top:2px;opacity:.92">${r.docente || 'Docente'}</span><span style="display:block;font-size:10px;opacity:.92">${salon}</span>`;
+    }
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        abrirReservaDesdeAgenda(r);
+    };
+    return btn;
+}
+
+function crearTrackHoras() {
+    const totalMin = (AGENDA_FIN - AGENDA_INICIO) * 60;
+    const hours = document.createElement('div');
+    hours.className = 'cal-hours';
+    hours.style.cssText = `position:relative;height:${AGENDA_TRACK_H}px;background:#f8fafc;border-right:1px solid #e8eef6;`;
+    for (let h = AGENDA_INICIO; h <= AGENDA_FIN; h += 1) {
+        const mark = document.createElement('div');
+        mark.className = 'cal-hour-label';
+        mark.style.cssText = `position:absolute;left:0;right:0;transform:translateY(-50%);padding:0 8px;font-size:10px;font-weight:800;color:#5c6b80;top:${((h - AGENDA_INICIO) * 60 / totalMin) * AGENDA_TRACK_H}px;`;
+        mark.textContent = `${String(h).padStart(2, '0')}:00`;
+        hours.appendChild(mark);
+    }
+    return hours;
+}
+
+function pintarLineasHora(track) {
+    const totalMin = (AGENDA_FIN - AGENDA_INICIO) * 60;
+    for (let h = AGENDA_INICIO; h < AGENDA_FIN; h += 1) {
+        const line = document.createElement('div');
+        line.className = 'cal-hour-line';
+        line.style.cssText = `position:absolute;left:0;right:0;border-top:1px solid #eef2f7;top:${((h - AGENDA_INICIO) * 60 / totalMin) * AGENDA_TRACK_H}px;`;
+        track.appendChild(line);
+    }
+}
+
+function posicionEventoEnTrack(event, r, idx = 0) {
+    const totalMin = (AGENDA_FIN - AGENDA_INICIO) * 60;
+    const ini = String(r.hora_inicio || '00:00').substring(0, 5);
+    const fin = String(r.hora_fin || '00:00').substring(0, 5);
+    let start = Math.max(0, minutosDesdeInicio(ini));
+    let end = minutosDesdeInicio(fin);
+    if (end <= start) end = start + 60;
+    end = Math.min(totalMin, end);
+    const top = (start / totalMin) * AGENDA_TRACK_H;
+    const height = Math.max(28, ((end - start) / totalMin) * AGENDA_TRACK_H);
+    event.classList.add('cal-event-abs');
+    event.style.position = 'absolute';
+    event.style.zIndex = '2';
+    event.style.top = `${top}px`;
+    event.style.height = `${height}px`;
+    event.style.left = `${8 + (idx % 3) * 6}px`;
+    event.style.right = '8px';
+    event.style.width = 'auto';
+}
+
+function renderAgendaDia(board) {
+    const reservas = reservasEnRango(agendaFecha, agendaFecha)
+        .slice()
+        .sort((a, b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cal-time-view';
+    wrap.style.cssText = 'display:grid;grid-template-columns:72px 1fr;min-height:656px;background:#fff;';
+
+    const hoursWrap = document.createElement('div');
+    hoursWrap.style.cssText = 'display:flex;flex-direction:column;min-width:0;';
+    const hoursHead = document.createElement('div');
+    hoursHead.className = 'cal-week-corner';
+    hoursHead.style.cssText = `height:${AGENDA_HEAD_H}px;display:flex;align-items:center;justify-content:center;background:#071833;color:#fff;font-size:11px;font-weight:800;`;
+    hoursHead.textContent = 'Hora';
+    hoursWrap.appendChild(hoursHead);
+    hoursWrap.appendChild(crearTrackHoras());
+    wrap.appendChild(hoursWrap);
+
+    const dayCol = document.createElement('div');
+    dayCol.style.cssText = 'display:flex;flex-direction:column;min-width:0;';
+    const head = document.createElement('div');
+    head.className = 'cal-day-head';
+    head.style.cssText = `height:${AGENDA_HEAD_H}px;display:flex;align-items:center;justify-content:center;background:#071833;color:#fff;font-size:12px;font-weight:800;text-transform:capitalize;`;
+    head.textContent = formatearRangoAgenda(agendaFecha, 'dia');
+    dayCol.appendChild(head);
+
+    const track = document.createElement('div');
+    track.className = 'cal-day-track';
+    track.style.cssText = `position:relative;height:${AGENDA_TRACK_H}px;border-left:1px solid #e8eef6;`;
+    pintarLineasHora(track);
+
+    if (!reservas.length) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-empty';
+        empty.style.cssText = 'position:absolute;inset:24px;display:flex;align-items:center;justify-content:center;border:1px dashed #dbe3ef;border-radius:16px;color:#94a3b8;font-size:12px;font-weight:700;';
+        empty.textContent = 'No hay reservas este día';
+        track.appendChild(empty);
+    } else {
+        reservas.forEach((r, idx) => {
+            const event = crearEventoAgenda(r);
+            posicionEventoEnTrack(event, r, idx);
+            track.appendChild(event);
+        });
+    }
+    dayCol.appendChild(track);
+    wrap.appendChild(dayCol);
+    board.replaceChildren(wrap);
+}
+
+function renderAgendaSemana(board) {
+    const lunes = inicioSemana(parseFechaISO(agendaFecha));
+    const dias = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(lunes);
+        d.setDate(lunes.getDate() + i);
+        return d;
+    });
+    const desde = fechaLocalISO(dias[0]);
+    const hasta = fechaLocalISO(dias[6]);
+    const reservas = reservasEnRango(desde, hasta);
+    const hoyISO = fechaLocalISO(new Date());
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cal-week-view';
+    wrap.style.cssText = 'display:grid;grid-template-columns:72px repeat(7, minmax(120px, 1fr));min-height:656px;min-width:900px;background:#fff;';
+
+    const corner = document.createElement('div');
+    corner.className = 'cal-week-corner';
+    corner.style.cssText = `height:${AGENDA_HEAD_H}px;background:#071833;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;`;
+    corner.textContent = 'Hora';
+    wrap.appendChild(corner);
+
+    dias.forEach((d) => {
+        const iso = fechaLocalISO(d);
+        const head = document.createElement('button');
+        head.type = 'button';
+        head.className = `cal-week-head${iso === hoyISO ? ' cal-today' : ''}`;
+        head.style.cssText = `height:${AGENDA_HEAD_H}px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${iso === hoyISO ? '#0e4a8a' : '#071833'};color:${iso === hoyISO ? '#edb309' : '#fff'};border:0;border-left:1px solid #0c274f;cursor:pointer;`;
+        head.innerHTML = `<span style="font-size:10px;text-transform:uppercase;opacity:.85">${d.toLocaleDateString('es-CO', { weekday: 'short' })}</span><strong style="font-size:16px">${d.getDate()}</strong>`;
+        head.onclick = () => irAgendaDia(iso);
+        wrap.appendChild(head);
+    });
+
+    const hours = crearTrackHoras();
+    hours.className = 'cal-week-hours';
+    wrap.appendChild(hours);
+
+    dias.forEach((d) => {
+        const iso = fechaLocalISO(d);
+        const col = document.createElement('div');
+        col.className = `cal-week-col${iso === hoyISO ? ' cal-today-col' : ''}`;
+        col.style.cssText = `position:relative;height:${AGENDA_TRACK_H}px;border-left:1px solid #e8eef6;${iso === hoyISO ? 'box-shadow:inset 0 0 0 2px rgba(237,179,9,.45);' : ''}`;
+        pintarLineasHora(col);
+        const delDia = reservas
+            .filter((r) => String(r.fecha || '').substring(0, 10) === iso)
+            .sort((a, b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
+        delDia.forEach((r, idx) => {
+            const event = crearEventoAgenda(r, true);
+            posicionEventoEnTrack(event, r, 0);
+            event.style.left = '4px';
+            event.style.right = '4px';
+            if (idx > 0) event.style.zIndex = String(2 + idx);
+            col.appendChild(event);
+        });
+        wrap.appendChild(col);
+    });
+
+    board.replaceChildren(wrap);
+}
+
+function renderAgendaMes(board) {
+    const base = parseFechaISO(agendaFecha);
+    const first = new Date(base.getFullYear(), base.getMonth(), 1);
+    const start = inicioSemana(first);
+    const hoyISO = fechaLocalISO(new Date());
+    const mesActual = base.getMonth();
+    const celdas = [];
+    for (let i = 0; i < 42; i += 1) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        celdas.push(d);
+    }
+    const desde = fechaLocalISO(celdas[0]);
+    const hasta = fechaLocalISO(celdas[41]);
+    const reservas = reservasEnRango(desde, hasta);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cal-month-view';
+    wrap.style.cssText = 'padding:12px;';
+
+    const weekdays = document.createElement('div');
+    weekdays.className = 'cal-month-weekdays';
+    weekdays.style.cssText = 'display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:8px;';
+    ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].forEach((n) => {
+        const el = document.createElement('div');
+        el.style.cssText = 'text-align:center;font-size:11px;font-weight:800;color:#5c6b80;text-transform:uppercase;padding:8px 0;';
+        el.textContent = n;
+        weekdays.appendChild(el);
+    });
+    wrap.appendChild(weekdays);
+
+    const grid = document.createElement('div');
+    grid.className = 'cal-month-grid';
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;';
+    celdas.forEach((d) => {
+        const iso = fechaLocalISO(d);
+        const fuera = d.getMonth() !== mesActual;
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'cal-month-cell';
+        cell.style.cssText = `min-height:110px;border:1px solid #e8eef6;border-radius:14px;background:${fuera ? '#f8fafc' : '#fff'};opacity:${fuera ? '.72' : '1'};padding:8px;text-align:left;cursor:pointer;${iso === hoyISO ? 'box-shadow:inset 0 0 0 2px rgba(237,179,9,.55);' : ''}`;
+        cell.onclick = () => irAgendaDia(iso);
+
+        const num = document.createElement('div');
+        num.style.cssText = 'font-size:12px;font-weight:800;color:#12213a;margin-bottom:6px;';
+        num.textContent = String(d.getDate());
+        cell.appendChild(num);
+
+        const list = document.createElement('div');
+        list.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+        const delDia = reservas
+            .filter((r) => String(r.fecha || '').substring(0, 10) === iso)
+            .sort((a, b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
+        delDia.slice(0, 3).forEach((r) => list.appendChild(crearEventoAgenda(r, true)));
+        if (delDia.length > 3) {
+            const more = document.createElement('span');
+            more.style.cssText = 'font-size:10px;font-weight:700;color:#0e4a8a;';
+            more.textContent = `+${delDia.length - 3} más`;
+            list.appendChild(more);
+        }
+        cell.appendChild(list);
+        grid.appendChild(cell);
+    });
+    wrap.appendChild(grid);
+    board.replaceChildren(wrap);
+}
+
+async function cargarTabla(tipo, requestId = navegacionId) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     const head = document.getElementById('tabla-head');
     const body = document.getElementById('tabla-body');
-    mostrarTablaVacia(body, 5, "Sincronizando con Supabase...");
+    if (requestId !== navegacionId) return;
+    head.innerHTML = '';
+    mostrarTablaVacia(body, 5, "Cargando...");
 
     try {
         let fetchUrl = `${API_URL}/${tipo}`;
@@ -366,6 +654,7 @@ async function cargarTabla(tipo) {
         
         const res = await apiFetch(fetchUrl);
         const result = await leerRespuestaApi(res);
+        if (requestId !== navegacionId) return;
         body.replaceChildren();
 
         if (tipo === 'reservas' || tipo === 'reservas_globales') {
@@ -523,6 +812,7 @@ async function cargarTabla(tipo) {
             }
         }
     } catch (e) {
+        if (requestId !== navegacionId) return;
         mostrarTablaVacia(
             body,
             5,

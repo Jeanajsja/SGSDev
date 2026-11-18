@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGS - Dashboard</title>
-    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -36,6 +36,7 @@
         .sidebar-active { background-color: #edb309 !important; color: #071833 !important; }
         .modal-bg { background: rgba(7, 24, 51, 0.65); backdrop-filter: blur(4px); }
         .restringido { display: none !important; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
@@ -101,15 +102,20 @@
                 </div>
             </div>
 
-            <!-- Agenda por salón (día seleccionado) -->
+            <!-- Agenda tipo calendario Teams (día / semana / mes) -->
             <section id="seccion-agenda" class="hidden space-y-4">
                 <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Agenda diaria</p>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Calendario de reservas</p>
                         <h4 id="agenda-fecha-label" class="text-lg font-black text-ucc-texto">Hoy</h4>
                     </div>
                     <div class="flex flex-wrap items-center gap-3">
-                        <button type="button" onclick="cambiarDiaAgenda(-1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Día anterior">
+                        <div class="flex rounded-xl border border-slate-200 overflow-hidden" role="group" aria-label="Vista del calendario">
+                            <button type="button" id="agenda-vista-dia" onclick="cambiarVistaAgenda('dia')" class="agenda-view-btn px-3 py-2 text-xs font-black uppercase tracking-wide">Día</button>
+                            <button type="button" id="agenda-vista-semana" onclick="cambiarVistaAgenda('semana')" class="agenda-view-btn px-3 py-2 text-xs font-black uppercase tracking-wide border-l border-slate-200">Semana</button>
+                            <button type="button" id="agenda-vista-mes" onclick="cambiarVistaAgenda('mes')" class="agenda-view-btn px-3 py-2 text-xs font-black uppercase tracking-wide border-l border-slate-200">Mes</button>
+                        </div>
+                        <button type="button" onclick="cambiarPeriodoAgenda(-1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Periodo anterior">
                             <i class="fas fa-chevron-left"></i>
                         </button>
                         <label class="flex items-center gap-2 text-sm font-bold text-ucc-texto">
@@ -117,7 +123,7 @@
                             <input type="date" id="agenda-fecha" class="border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-ucc-dorado bg-white" onchange="cargarAgendaSalones()">
                         </label>
                         <button type="button" onclick="irAgendaHoy()" class="px-4 py-2 rounded-xl bg-ucc-azul text-white text-xs font-black uppercase tracking-wide hover:bg-ucc-navy transition">Hoy</button>
-                        <button type="button" onclick="cambiarDiaAgenda(1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Día siguiente">
+                        <button type="button" onclick="cambiarPeriodoAgenda(1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Periodo siguiente">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                         <button type="button" onclick="cargarAgendaSalones()" class="p-2 text-ucc-azul hover:bg-ucc-plata rounded-lg transition" aria-label="Actualizar agenda">
@@ -125,7 +131,7 @@
                         </button>
                     </div>
                 </div>
-                <div id="agenda-board" class="agenda-board overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm"></div>
+                <div id="agenda-board" class="agenda-board overflow-auto rounded-3xl border border-slate-200 bg-white shadow-sm"></div>
             </section>
 
             <!-- Tabla Maestra (Cubre todas las consultas del PDF) -->
@@ -168,6 +174,6 @@
         </div>
     </div>
 
-    <script src="../static/js/dashboard.js"></script>
+    <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
