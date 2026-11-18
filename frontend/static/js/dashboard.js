@@ -330,7 +330,36 @@ async function cargarTabla(tipo) {
     }
 }
 
-function prepararModal(tipo, editData = null) {
+async function llenarSelectSalones(selectId, selectedId = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    try {
+        const res = await apiFetch(`${API_URL}/salones`);
+        const result = await leerRespuestaApi(res);
+        const salones = (result.data || []).filter(
+            (s) => (s.estado || "").toLowerCase() === "disponible"
+        );
+        salones.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es", { numeric: true }));
+        select.innerHTML = '<option value="">Selecciona un salón o laboratorio</option>';
+        if (!salones.length) {
+            select.innerHTML = '<option value="">No hay salones disponibles</option>';
+            return;
+        }
+        salones.forEach((s) => {
+            const option = document.createElement("option");
+            option.value = String(s.id_salon);
+            option.textContent = `${s.nombre} (cupo ${s.capacidad})`;
+            if (selectedId != null && String(selectedId) === String(s.id_salon)) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    } catch (e) {
+        select.innerHTML = `<option value="">${e.message || "No se pudieron cargar salones"}</option>`;
+    }
+}
+
+async function prepararModal(tipo, editData = null) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     const campos = document.getElementById('campos-dinamicos');
     campos.innerHTML = "";
@@ -354,8 +383,10 @@ function prepararModal(tipo, editData = null) {
                 </div>
             </div>
             <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-400 uppercase">ID del Salón</label>
-                <input type="number" id="m-salon" placeholder="ID del Salón" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+                <label class="text-xs font-bold text-slate-400 uppercase">Salón / Laboratorio</label>
+                <select id="m-salon" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition bg-white" required>
+                    <option value="">Cargando salones...</option>
+                </select>
             </div>
             ${user.id_rol != 3 ? `
             <div class="space-y-1">
@@ -369,13 +400,13 @@ function prepararModal(tipo, editData = null) {
             document.getElementById('m-fecha').value = editData.fecha;
             document.getElementById('m-inicio').value = editData.hora_inicio;
             document.getElementById('m-fin').value = editData.hora_fin;
-            document.getElementById('m-salon').value = String(editData.id_salon);
             if (user.id_rol != 3) {
                 document.getElementById('m-docente').value = String(editData.id_docente);
             }
         }
         document.getElementById('modalMaestro').classList.remove('hidden');
         document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, editData ? 'editar_reserva' : 'reserva');
+        await llenarSelectSalones('m-salon', editData ? editData.id_salon : null);
     } else if (tipo === 'salon') {
         document.getElementById('modal-titulo').innerText = "Registrar Salón";
         campos.innerHTML = `

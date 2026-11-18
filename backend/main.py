@@ -16,6 +16,7 @@ from controllers.docente_controller import router as docente_router
 from controllers.reserva_controller import router as reserva_router
 from controllers.rol_controller import router as rol_router
 from database.db_config import get_connection
+from seed_salones import asegurar_salones_base
 from seed_superadmin import asegurar_superadmin
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,12 @@ async def lifespan(_application: FastAPI):
             logger.info("Superadministrador ancla creado en el arranque")
     except Exception:
         logger.exception("No se pudo aprovisionar el superadministrador ancla")
+    try:
+        salones = asegurar_salones_base(get_connection)
+        if salones:
+            logger.info("Salones y laboratorios base creados: %s", salones)
+    except Exception:
+        logger.exception("No se pudieron aprovisionar salones/laboratorios base")
     yield
 
 
