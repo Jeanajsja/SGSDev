@@ -115,8 +115,7 @@ class UsuarioService:
         if exponer and (not envio.get("ok")):
             respuesta["reset_link"] = enlace
             respuesta["message"] = (
-                "Te generamos un enlace para restablecer la contraseña. "
-                "Ábrelo para continuar."
+                "Listo. Abre el enlace para restablecer tu contraseña."
             )
         elif not envio.get("ok") and smtp_configurado():
             return {

@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 import jwt
 
@@ -52,4 +53,4 @@ def url_base_app():
 
 
 def construir_enlace_restablecimiento(token):
-    return f"{url_base_app()}/reset-password.html?token={token}"
+    return f"{url_base_app()}/reset-password.html?token={quote(str(token), safe='')}"

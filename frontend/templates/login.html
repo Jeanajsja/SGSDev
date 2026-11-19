@@ -58,9 +58,9 @@
 
         <form id="resetForm" class="hidden space-y-4">
             <input type="email" id="rp-email" maxlength="255" autocomplete="username" placeholder="Correo de tu cuenta" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
-            <p class="text-center text-xs text-ucc-muted">Te enviaremos un enlace a tu correo para restablecer la contraseña.</p>
+            <p id="reset-help" class="text-center text-xs text-ucc-muted">Ingresa el correo de tu cuenta para continuar con el restablecimiento.</p>
             <button type="submit" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Enviar enlace</button>
-            <div id="reset-link-box" class="hidden text-center text-xs bg-ucc-plata border border-slate-100 rounded-2xl p-3"></div>
+            <div id="reset-link-box" class="hidden text-center text-xs bg-ucc-plata border border-slate-100 rounded-2xl p-3 space-y-2"></div>
             <p class="text-center text-xs text-ucc-muted"><a href="javascript:mostrarVista('login')" class="text-ucc-azul font-bold underline">Volver al inicio de sesión</a></p>
         </form>
     </div>
@@ -82,7 +82,11 @@
             } else if (vista === 'reset') {
                 reset.classList.remove('hidden');
                 document.getElementById('title').innerText = "Recuperar acceso";
-                document.getElementById('subtitle').innerText = "Te enviaremos un enlace al correo";
+                document.getElementById('subtitle').innerText = "Restablece tu contraseña";
+                const help = document.getElementById('reset-help');
+                if (help) {
+                    help.textContent = "Ingresa el correo de tu cuenta para continuar con el restablecimiento.";
+                }
                 const box = document.getElementById('reset-link-box');
                 if (box) {
                     box.classList.add('hidden');
@@ -171,13 +175,24 @@
                 }
                 const result = await res.json();
                 if (res.ok && result.status === 'ok') {
-                    alert(result.message || "Revisa tu correo.");
+                    const help = document.getElementById('reset-help');
                     if (result.reset_link) {
+                        if (help) {
+                            help.textContent = "Abre el enlace para definir tu nueva contraseña.";
+                        }
                         box.classList.remove('hidden');
-                        box.innerHTML = `Enlace de restablecimiento (entorno local):<br><a class="text-ucc-azul font-bold underline break-all" href="${result.reset_link}">Abrir enlace</a>`;
+                        box.innerHTML = `
+                            <p class="font-bold text-ucc-texto">Enlace listo</p>
+                            <a class="inline-block mt-1 text-ucc-azul font-bold underline break-all" href="${result.reset_link}">Abrir enlace de restablecimiento</a>
+                        `;
+                        document.getElementById('subtitle').innerText = "Continúa con el enlace";
+                    } else if (help) {
+                        help.textContent = result.message || "Si el correo está registrado, revisa tu bandeja de entrada.";
                     }
+                    alert(result.message || "Revisa tu correo.");
                 } else {
-                    alert("Error: " + (result.message || result.detail || "No se pudo enviar el enlace."));
+                    const detalle = result.message || (typeof result.detail === 'string' ? result.detail : null) || "No se pudo enviar el enlace.";
+                    alert(detalle);
                 }
             } catch (err) {
                 alert("Error al conectar con el servidor.");
