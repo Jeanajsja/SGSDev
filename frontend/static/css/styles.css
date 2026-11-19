@@ -64,7 +64,7 @@ canvas#reservasChart {
 .cal-hours,
 .cal-week-hours {
     position: relative;
-    height: 600px;
+    height: 640px;
     background: #f8fafc;
     border-right: 1px solid #e8eef6;
     overflow: visible;
@@ -126,7 +126,7 @@ canvas#reservasChart {
 .cal-week-col,
 .cal-week-hours {
     position: relative;
-    height: 600px;
+    height: 640px;
     border-left: 1px solid #e8eef6;
 }
 

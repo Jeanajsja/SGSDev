@@ -19,8 +19,9 @@ function invalidarCacheApi(prefijo = null) {
 }
 
 const AGENDA_INICIO = 7;
-const AGENDA_FIN = 22;
-const AGENDA_TRACK_H = 600;
+// Fin exclusivo: con 23 se muestran etiquetas 07:00 … 22:00
+const AGENDA_FIN = 23;
+const AGENDA_TRACK_H = 640;
 const AGENDA_HEAD_H = 56;
 const AGENDA_COLORES = [
     "#0e4a8a",
