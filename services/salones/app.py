@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from db_config import get_connection
+from db_config import get_connection, start_keepalive, warm_connection
 from repositories.postgres_salon_repository import PostgresSalonRepository
 from salon_controller import crear_router
 from salon_service import SalonService
@@ -21,6 +21,11 @@ async def lifespan(_application: FastAPI):
             logger.info("Salones y laboratorios base creados: %s", creados)
     except Exception:
         logger.exception("No se pudieron aprovisionar salones/laboratorios base")
+    try:
+        warm_connection()
+        start_keepalive()
+    except Exception:
+        logger.exception("No se pudo precalentar la conexión a Supabase")
     yield
 
 

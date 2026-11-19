@@ -1,10 +1,22 @@
 const API_URL = window.location.origin + "/api";
+const API_CACHE_TTL_MS = 45000;
 let seccionActual = 'dashboard';
 let chartInstance = null;
 let agendaFecha = null;
 let agendaVista = 'semana';
 let agendaCache = { salones: [], reservas: [] };
 let navegacionId = 0;
+const apiGetCache = new Map();
+
+function invalidarCacheApi(prefijo = null) {
+    if (!prefijo) {
+        apiGetCache.clear();
+        return;
+    }
+    for (const key of [...apiGetCache.keys()]) {
+        if (key.includes(prefijo)) apiGetCache.delete(key);
+    }
+}
 
 const AGENDA_INICIO = 7;
 const AGENDA_FIN = 22;
@@ -28,12 +40,27 @@ async function apiFetch(url, options = {}) {
         throw new Error("Sesión no autenticada");
     }
 
+    const method = String(options.method || 'GET').toUpperCase();
+    const cacheable = method === 'GET' && !options.bypassCache;
+    if (cacheable) {
+        const hit = apiGetCache.get(url);
+        if (hit && (Date.now() - hit.at) < API_CACHE_TTL_MS) {
+            return hit.response.clone();
+        }
+    }
+
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", `Bearer ${token}`);
     const response = await fetch(url, { ...options, headers });
     if (response.status === 401) {
         cerrarSesion();
         throw new Error("Sesión expirada");
+    }
+    if (cacheable && response.ok) {
+        apiGetCache.set(url, { at: Date.now(), response: response.clone() });
+    }
+    if (method !== 'GET' && response.ok) {
+        invalidarCacheApi('/api/');
     }
     return response;
 }
@@ -115,7 +142,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     mostrarSeccion('dashboard');
+    precargarCatalogos();
 });
+
+function precargarCatalogos() {
+    // Calienta cache GET en segundo plano (salones/docentes/reservas) para pestañas siguientes
+    Promise.allSettled([
+        apiFetch(`${API_URL}/salones`),
+        apiFetch(`${API_URL}/docentes`),
+        apiFetch(`${API_URL}/reservas`),
+    ]).catch(() => {});
+}
 
 async function mostrarSeccion(seccion) {
     const requestId = ++navegacionId;
@@ -143,6 +180,7 @@ async function mostrarSeccion(seccion) {
         btn.onclick = () => prepararModal('reserva');
         await cargarTabla('reservas', requestId);
         if (requestId !== navegacionId) return;
+        // Reutiliza /api/reservas ya cacheado por cargarTabla (evita 2da espera)
         initChart();
     } else if (seccion === 'salones') {
         tit.innerText = "Gestión de Salones";
@@ -340,7 +378,7 @@ function irAgendaDia(iso) {
     renderCalendarioAgenda();
 }
 
-async function cargarAgendaSalones(requestId = navegacionId) {
+async function cargarAgendaSalones(requestId = navegacionId, forzar = false) {
     const board = document.getElementById('agenda-board');
     const input = document.getElementById('agenda-fecha');
     if (!board || !input) return;
@@ -352,9 +390,20 @@ async function cargarAgendaSalones(requestId = navegacionId) {
     agendaFecha = input.value;
     sincronizarBotonesVistaAgenda();
     actualizarEtiquetaAgenda();
-    board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">Cargando calendario...</div>';
+
+    // Si ya hay datos en memoria, pinta al instante y refresca en segundo plano
+    const tieneCacheLocal = (agendaCache.salones || []).length > 0;
+    if (!tieneCacheLocal) {
+        board.innerHTML = '<div class="p-16 text-center text-slate-400 font-bold">Cargando calendario...</div>';
+    } else {
+        renderCalendarioAgenda();
+    }
 
     try {
+        if (forzar) {
+            invalidarCacheApi('/api/salones');
+            invalidarCacheApi('/api/reservas');
+        }
         const [resSalones, resReservas] = await Promise.all([
             apiFetch(`${API_URL}/salones`),
             apiFetch(`${API_URL}/reservas`),
@@ -376,7 +425,9 @@ async function cargarAgendaSalones(requestId = navegacionId) {
         renderCalendarioAgenda();
     } catch (e) {
         if (requestId !== navegacionId || seccionActual !== 'reservas_globales') return;
-        board.innerHTML = `<div class="p-16 text-center text-red-500 font-bold">${e.message || 'No se pudo cargar la agenda'}</div>`;
+        if (!tieneCacheLocal) {
+            board.innerHTML = `<div class="p-16 text-center text-red-500 font-bold">${e.message || 'No se pudo cargar la agenda'}</div>`;
+        }
     }
 }
 

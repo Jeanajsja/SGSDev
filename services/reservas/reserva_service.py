@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
+from common.ttl_cache import TtlCache
 from interfaces.reserva_repository import IReservaRepository
 
 HORAS_MINIMAS_CANCELACION = 8
 MAX_HORAS_CLASE = 2
 MAX_HORAS_DIA = 8
 MAX_HORAS_SEMANA = 46
+_cache = TtlCache(ttl_sec=20)
 
 
 class ReservaService:
@@ -13,6 +15,13 @@ class ReservaService:
 
     def listar(self, principal=None):
         try:
+            cache_key = "reservas:all"
+            if principal and principal["id_rol"] == 3:
+                cache_key = f"reservas:docente:{principal['id_usuario']}"
+            cached = _cache.get(cache_key)
+            if cached is not None:
+                return {"status": "ok", "data": cached}
+
             reservas = [
                 r
                 for r in self._repository.listar_detalle()
@@ -24,6 +33,7 @@ class ReservaService:
                     for reserva in reservas
                     if reserva.get("id_docente") == principal["id_usuario"]
                 ]
+            _cache.set(cache_key, reservas)
             return {"status": "ok", "data": reservas}
         except ConnectionError as e:
             return {"status": "error", "message": str(e)}
@@ -55,6 +65,7 @@ class ReservaService:
             ):
                 return self._suscribir_a_cola(data["id_salon"], data["id_docente"])
             self._repository.crear(data["fecha"], h_ini, h_fin, data["id_docente"], data["id_salon"])
+            _cache.invalidate("reservas")
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
@@ -82,6 +93,7 @@ class ReservaService:
                 data["id_salon"],
                 data["id_docente"],
             )
+            _cache.invalidate("reservas")
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
@@ -114,6 +126,7 @@ class ReservaService:
             if id_salon is None:
                 return {"status": "error", "message": "No se encontró la reserva"}
             self._repository.promover_siguiente_cola(id_salon)
+            _cache.invalidate("reservas")
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:

@@ -15,7 +15,7 @@ from controllers.salon_controller import router as salon_router
 from controllers.docente_controller import router as docente_router
 from controllers.reserva_controller import router as reserva_router
 from controllers.rol_controller import router as rol_router
-from database.db_config import get_connection
+from database.db_config import get_connection, start_keepalive, warm_connection
 from seed_salones import asegurar_salones_base
 from seed_superadmin import asegurar_superadmin
 
@@ -39,6 +39,11 @@ async def lifespan(_application: FastAPI):
             logger.info("Salones y laboratorios base creados: %s", salones)
     except Exception:
         logger.exception("No se pudieron aprovisionar salones/laboratorios base")
+    try:
+        warm_connection()
+        start_keepalive()
+    except Exception:
+        logger.exception("No se pudo precalentar la conexión a Supabase")
     yield
 
 

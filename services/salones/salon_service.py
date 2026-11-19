@@ -1,8 +1,10 @@
+from common.ttl_cache import TtlCache
 from interfaces.salon_repository import ISalonRepository
 from models.salon import Salon
 
 CAPACIDAD_MINIMA = 1
 CAPACIDAD_MAXIMA = 20
+_cache = TtlCache(ttl_sec=30)
 
 
 class SalonService:
@@ -10,13 +12,18 @@ class SalonService:
         self._repository = repository
 
     def listar(self):
-        return [Salon.from_row(row).to_dict() for row in self._repository.listar()]
+        cached = _cache.get("salones")
+        if cached is not None:
+            return cached
+        data = [Salon.from_row(row).to_dict() for row in self._repository.listar()]
+        _cache.set("salones", data)
+        return data
 
     def listar_disponibles(self):
         return [
-            Salon.from_row(row).to_dict()
-            for row in self._repository.listar()
-            if (row.get("estado") or "").lower() == "disponible"
+            salon
+            for salon in self.listar()
+            if (salon.get("estado") or "").lower() == "disponible"
         ]
 
     def crear(self, data):
@@ -25,6 +32,7 @@ class SalonService:
             return error
         try:
             self._repository.crear(data["nombre"].strip(), int(data["capacidad"]), data["ubicacion"].strip())
+            _cache.invalidate("salones")
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         return {"status": "ok", "message": "Salón registrado exitosamente"}
@@ -40,6 +48,7 @@ class SalonService:
                 int(data["capacidad"]),
                 data["ubicacion"].strip(),
             )
+            _cache.invalidate("salones")
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         if filas > 0:
