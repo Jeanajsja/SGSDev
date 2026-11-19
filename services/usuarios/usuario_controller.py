@@ -21,7 +21,9 @@ class OlvidePasswordRequest(BaseModel):
 
 
 class RestablecerPasswordRequest(BaseModel):
-    token: str = Field(min_length=10)
+    token: str | None = Field(default=None, min_length=10)
+    email: str | None = Field(default=None, min_length=3, max_length=255)
+    pin: str | None = Field(default=None, min_length=4, max_length=12)
     nueva_password: str = Field(min_length=8, max_length=128)
     confirmar_password: str = Field(min_length=8, max_length=128)
 
@@ -46,7 +48,22 @@ def crear_router(service: UsuarioService) -> APIRouter:
                 },
                 status_code=400,
             )
-        res = service.restablecer_password(payload.token, payload.nueva_password)
+        usa_pin = bool((payload.email or "").strip() and (payload.pin or "").strip())
+        usa_token = bool((payload.token or "").strip())
+        if not usa_pin and not usa_token:
+            return JSONResponse(
+                content={
+                    "status": "error",
+                    "message": "Debes ingresar el código de seguridad o un enlace válido",
+                },
+                status_code=400,
+            )
+        res = service.restablecer_password(
+            token=payload.token,
+            nueva_password=payload.nueva_password,
+            email=payload.email,
+            pin=payload.pin,
+        )
         if res and res.get("status") == "ok":
             return res
         return JSONResponse(content=res, status_code=400)

@@ -30,7 +30,9 @@ spec:
             - name: APP_BASE_URL
               value: "http://localhost:8080"
             - name: RESET_LINK_IN_RESPONSE
-              value: "1"
+              value: "0"
+            - name: RESET_PIN_MINUTES
+              value: "15"
           readinessProbe:
             httpGet:
               path: /health

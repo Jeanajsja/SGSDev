@@ -3,10 +3,9 @@ import os
 
 from common.mailer import enviar_correo, smtp_configurado
 from common.password_reset import (
-    construir_enlace_restablecimiento,
-    crear_token_restablecimiento,
     decodificar_token_restablecimiento,
 )
+from common.reset_pin_store import generar_pin, guardar_pin, verificar_y_consumir_pin
 from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.usuario_repository import IUsuarioRepository
@@ -67,82 +66,80 @@ class UsuarioService:
 
     def solicitar_restablecimiento(self, email):
         """
-        Genera un enlace de restauración y lo envía al correo.
-        Siempre responde genérico para no revelar si la cuenta existe.
+        Genera un PIN de seguridad y lo envía al correo.
+        Nunca devuelve el PIN ni un enlace en la respuesta HTTP.
         """
         correo = (email or "").strip().lower()
         mensaje_ok = (
-            "Si el correo está registrado, te enviamos un enlace para restablecer "
-            "la contraseña. Revisa tu bandeja de entrada."
+            "Si el correo está registrado, te enviamos un código de seguridad. "
+            "Revisa tu bandeja de entrada e ingresa el PIN para continuar."
         )
         if not correo:
             return {"status": "error", "message": "El correo es obligatorio"}
 
-        usuario = None
         try:
             usuario = self._repository.buscar_por_email(correo)
         except ConnectionError:
             return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         except Exception:
             logger.exception("Error buscando usuario para restablecimiento")
-            return {"status": "ok", "message": mensaje_ok}
+            return {"status": "ok", "message": mensaje_ok, "pin_required": True}
 
         if not usuario:
-            return {"status": "ok", "message": mensaje_ok}
+            return {"status": "ok", "message": mensaje_ok, "pin_required": True}
 
-        try:
-            token = crear_token_restablecimiento(correo)
-            enlace = construir_enlace_restablecimiento(token)
-        except Exception:
-            logger.exception("No se pudo crear token de restablecimiento")
-            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        minutos = max(1, int(os.getenv("RESET_PIN_MINUTES", "15")))
+        pin = generar_pin()
+        guardar_pin(correo, pin)
 
-        asunto = "Restablece tu contraseña - SGSDev"
+        asunto = "Código de seguridad - SGSDev"
         texto = (
             "Recibimos una solicitud para restablecer tu contraseña en SGSDev.\n\n"
-            f"Abre este enlace (válido por 30 minutos):\n{enlace}\n\n"
+            f"Tu código de seguridad es: {pin}\n"
+            f"Válido por {minutos} minutos.\n\n"
             "Si no solicitaste este cambio, ignora este mensaje."
         )
         html = (
             "<p>Recibimos una solicitud para restablecer tu contraseña en <strong>SGSDev</strong>.</p>"
-            f'<p><a href="{enlace}">Restablecer contraseña</a></p>'
-            f"<p>O copia este enlace:<br>{enlace}</p>"
-            "<p>El enlace vence en 30 minutos. Si no solicitaste este cambio, ignora este mensaje.</p>"
+            f"<p>Tu código de seguridad es: <strong style=\"font-size:1.4em;letter-spacing:0.15em\">{pin}</strong></p>"
+            f"<p>Válido por {minutos} minutos. Si no solicitaste este cambio, ignora este mensaje.</p>"
         )
 
-        envio = {"ok": False, "message": "SMTP no configurado"}
         if smtp_configurado():
             envio = enviar_correo(correo, asunto, texto, html=html)
+            if not envio.get("ok"):
+                logger.error("Fallo SMTP al restablecer %s: %s", correo, envio.get("message"))
+                return {
+                    "status": "error",
+                    "message": "No se pudo enviar el código de seguridad. Intenta más tarde.",
+                }
         else:
-            logger.warning("SMTP no configurado. Enlace de restablecimiento para %s: %s", correo, enlace)
-
-        respuesta = {"status": "ok", "message": mensaje_ok}
-        # En local/Kind sin SMTP, devolver el enlace para poder completar el flujo
-        exponer = (os.getenv("RESET_LINK_IN_RESPONSE", "1") or "1").strip() not in {
-            "0",
-            "false",
-            "False",
-        }
-        if exponer and (not envio.get("ok")):
-            respuesta["reset_link"] = enlace
-            respuesta["message"] = (
-                "Listo. Abre el enlace para restablecer tu contraseña."
+            # Sin SMTP el PIN no se muestra en la UI; solo queda en logs del servidor.
+            logger.warning(
+                "SMTP no configurado. PIN de restablecimiento para %s (solo logs): %s",
+                correo,
+                pin,
             )
-        elif not envio.get("ok") and smtp_configurado():
-            logger.error("Fallo SMTP al restablecer %s: %s", correo, envio.get("message"))
-            return {
-                "status": "error",
-                "message": "No se pudo enviar el correo de restablecimiento. Intenta más tarde.",
-            }
-        return respuesta
 
-    def restablecer_password(self, token, nueva_password):
-        correo = decodificar_token_restablecimiento(token or "")
-        if not correo:
-            return {
-                "status": "error",
-                "message": "El enlace de restablecimiento es inválido o ya expiró",
-            }
+        return {"status": "ok", "message": mensaje_ok, "pin_required": True}
+
+    def restablecer_password(self, token=None, nueva_password=None, email=None, pin=None):
+        correo = None
+        if email and pin:
+            correo = (email or "").strip().lower()
+            if not verificar_y_consumir_pin(correo, pin):
+                return {
+                    "status": "error",
+                    "message": "El código de seguridad es inválido o ya expiró",
+                }
+        else:
+            correo = decodificar_token_restablecimiento(token or "")
+            if not correo:
+                return {
+                    "status": "error",
+                    "message": "El código o enlace de restablecimiento es inválido o ya expiró",
+                }
+
         error_clave = validar_password(nueva_password)
         if error_clave:
             return error_clave

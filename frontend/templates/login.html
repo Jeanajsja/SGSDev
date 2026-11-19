@@ -57,16 +57,64 @@
         </form>
 
         <form id="resetForm" class="hidden space-y-4">
-            <input type="email" id="rp-email" maxlength="255" autocomplete="username" placeholder="Correo de tu cuenta" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
-            <p id="reset-help" class="text-center text-xs text-ucc-muted">Ingresa el correo de tu cuenta para continuar con el restablecimiento.</p>
-            <button type="submit" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Enviar enlace</button>
-            <div id="reset-link-box" class="hidden text-center text-xs bg-ucc-plata border border-slate-100 rounded-2xl p-3 space-y-2"></div>
+            <div id="reset-step-email" class="space-y-4">
+                <input type="email" id="rp-email" maxlength="255" autocomplete="username" placeholder="Correo de tu cuenta" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
+                <p id="reset-help" class="text-center text-xs text-ucc-muted">Te enviaremos un código de seguridad al correo para restablecer tu contraseña.</p>
+                <button type="submit" id="rp-enviar" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Enviar código</button>
+            </div>
+            <div id="reset-step-pin" class="hidden space-y-4">
+                <input type="text" id="rp-pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="Código de 6 dígitos" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition tracking-widest text-center text-lg font-bold">
+                <input type="password" id="rp-pass" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Nueva contraseña" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
+                <input type="password" id="rp-pass2" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Confirmar nueva contraseña" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
+                <p class="text-center text-xs text-ucc-muted">Ingresa el PIN que llegó a tu correo y define tu nueva contraseña (mínimo 8 caracteres, con letras y números).</p>
+                <button type="button" id="rp-guardar" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Restablecer contraseña</button>
+                <button type="button" id="rp-reenviar" class="w-full bg-transparent text-ucc-azul font-bold py-2 text-sm underline">Reenviar código</button>
+            </div>
             <p class="text-center text-xs text-ucc-muted"><a href="javascript:mostrarVista('login')" class="text-ucc-azul font-bold underline">Volver al inicio de sesión</a></p>
         </form>
     </div>
 
     <script>
         const API = window.location.origin + "/api";
+        let resetEmailPendiente = "";
+
+        function validarNuevaClave(clave) {
+            if (!clave || clave.length < 8) {
+                return "La contraseña debe tener mínimo 8 caracteres";
+            }
+            if (!/[A-Za-zÁÉÍÓÚáéíóúÑñ]/.test(clave)) {
+                return "La contraseña debe incluir letras";
+            }
+            if (!/\d/.test(clave)) {
+                return "La contraseña debe incluir números";
+            }
+            return null;
+        }
+
+        function mostrarPasoReset(paso) {
+            const stepEmail = document.getElementById('reset-step-email');
+            const stepPin = document.getElementById('reset-step-pin');
+            if (paso === 'pin') {
+                stepEmail.classList.add('hidden');
+                stepPin.classList.remove('hidden');
+                document.getElementById('rp-email').required = false;
+                document.getElementById('rp-pin').required = true;
+                document.getElementById('rp-pass').required = true;
+                document.getElementById('rp-pass2').required = true;
+                document.getElementById('title').innerText = "Código de seguridad";
+                document.getElementById('subtitle').innerText = "Revisa tu correo";
+            } else {
+                stepEmail.classList.remove('hidden');
+                stepPin.classList.add('hidden');
+                document.getElementById('rp-email').required = true;
+                document.getElementById('rp-pin').required = false;
+                document.getElementById('rp-pass').required = false;
+                document.getElementById('rp-pass2').required = false;
+                document.getElementById('rp-pin').value = "";
+                document.getElementById('rp-pass').value = "";
+                document.getElementById('rp-pass2').value = "";
+            }
+        }
 
         function mostrarVista(vista) {
             const login = document.getElementById('loginForm');
@@ -81,22 +129,39 @@
                 document.getElementById('subtitle').innerText = "Crea tu perfil de docente";
             } else if (vista === 'reset') {
                 reset.classList.remove('hidden');
+                resetEmailPendiente = "";
+                mostrarPasoReset('email');
                 document.getElementById('title').innerText = "Recuperar acceso";
                 document.getElementById('subtitle').innerText = "Restablece tu contraseña";
                 const help = document.getElementById('reset-help');
                 if (help) {
-                    help.textContent = "Ingresa el correo de tu cuenta para continuar con el restablecimiento.";
-                }
-                const box = document.getElementById('reset-link-box');
-                if (box) {
-                    box.classList.add('hidden');
-                    box.innerHTML = '';
+                    help.textContent = "Te enviaremos un código de seguridad al correo para restablecer tu contraseña.";
                 }
             } else {
                 login.classList.remove('hidden');
                 document.getElementById('title').innerText = "Bienvenido";
                 document.getElementById('subtitle').innerText = "Universidad Católica de Colombia";
             }
+        }
+
+        async function solicitarCodigo(email) {
+            const res = await fetch(`${API}/usuarios/olvide-password`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email })
+            });
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return { ok: false, message: "El servidor se está iniciando o no está disponible. Intenta de nuevo en unos segundos." };
+            }
+            const result = await res.json();
+            if (res.ok && result.status === 'ok') {
+                return { ok: true, message: result.message || "Revisa tu correo e ingresa el código." };
+            }
+            return {
+                ok: false,
+                message: result.message || (typeof result.detail === 'string' ? result.detail : null) || "No se pudo enviar el código."
+            };
         }
 
         document.getElementById('loginForm').onsubmit = async (e) => {
@@ -158,41 +223,78 @@
 
         document.getElementById('resetForm').onsubmit = async (e) => {
             e.preventDefault();
+            if (!document.getElementById('reset-step-pin').classList.contains('hidden')) {
+                return;
+            }
             const email = document.getElementById('rp-email').value.trim();
-            const box = document.getElementById('reset-link-box');
-            box.classList.add('hidden');
-            box.innerHTML = '';
             try {
-                const res = await fetch(`${API}/usuarios/olvide-password`, {
+                const result = await solicitarCodigo(email);
+                if (result.ok) {
+                    resetEmailPendiente = email;
+                    mostrarPasoReset('pin');
+                    alert(result.message);
+                } else {
+                    alert(result.message);
+                }
+            } catch (err) {
+                alert("Error al conectar con el servidor.");
+            }
+        };
+
+        document.getElementById('rp-reenviar').onclick = async () => {
+            const email = resetEmailPendiente || document.getElementById('rp-email').value.trim();
+            if (!email) {
+                alert("Ingresa primero el correo de tu cuenta.");
+                mostrarPasoReset('email');
+                return;
+            }
+            try {
+                const result = await solicitarCodigo(email);
+                alert(result.message);
+            } catch (err) {
+                alert("Error al conectar con el servidor.");
+            }
+        };
+
+        document.getElementById('rp-guardar').onclick = async () => {
+            const email = resetEmailPendiente || document.getElementById('rp-email').value.trim();
+            const pin = document.getElementById('rp-pin').value.trim();
+            const nueva_password = document.getElementById('rp-pass').value;
+            const confirmar_password = document.getElementById('rp-pass2').value;
+            if (!email) {
+                alert("Falta el correo de la cuenta.");
+                return;
+            }
+            if (!/^\d{6}$/.test(pin)) {
+                alert("Ingresa el código de 6 dígitos que llegó a tu correo.");
+                return;
+            }
+            const errorClave = validarNuevaClave(nueva_password);
+            if (errorClave) {
+                alert(errorClave);
+                return;
+            }
+            if (nueva_password !== confirmar_password) {
+                alert("La confirmación de contraseña no coincide");
+                return;
+            }
+            try {
+                const res = await fetch(`${API}/usuarios/restablecer-password`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email })
+                    body: JSON.stringify({ email, pin, nueva_password, confirmar_password })
                 });
                 const contentType = res.headers.get('content-type') || '';
                 if (!contentType.includes('application/json')) {
-                    alert("El servidor se está iniciando o no está disponible. Intenta de nuevo en unos segundos.");
+                    alert("El servidor no está disponible. Intenta de nuevo.");
                     return;
                 }
                 const result = await res.json();
                 if (res.ok && result.status === 'ok') {
-                    const help = document.getElementById('reset-help');
-                    if (result.reset_link) {
-                        if (help) {
-                            help.textContent = "Abre el enlace para definir tu nueva contraseña.";
-                        }
-                        box.classList.remove('hidden');
-                        box.innerHTML = `
-                            <p class="font-bold text-ucc-texto">Enlace listo</p>
-                            <a class="inline-block mt-1 text-ucc-azul font-bold underline break-all" href="${result.reset_link}">Abrir enlace de restablecimiento</a>
-                        `;
-                        document.getElementById('subtitle').innerText = "Continúa con el enlace";
-                    } else if (help) {
-                        help.textContent = result.message || "Si el correo está registrado, revisa tu bandeja de entrada.";
-                    }
-                    alert(result.message || "Revisa tu correo.");
+                    alert(result.message || "Contraseña actualizada.");
+                    mostrarVista('login');
                 } else {
-                    const detalle = result.message || (typeof result.detail === 'string' ? result.detail : null) || "No se pudo enviar el enlace.";
-                    alert(detalle);
+                    alert(result.message || "No se pudo restablecer la contraseña.");
                 }
             } catch (err) {
                 alert("Error al conectar con el servidor.");

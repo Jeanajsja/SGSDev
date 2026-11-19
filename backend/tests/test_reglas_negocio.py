@@ -249,18 +249,23 @@ class TestPasswordYRegistro(unittest.TestCase):
         self.assertIsNone(validar_password(CLAVE))
 
     def test_restablecer_password(self):
-        from services.password_reset import crear_token_restablecimiento
+        from services.reset_pin_store import generar_pin, guardar_pin
 
         with patch.dict(
             "os.environ",
             {"JWT_SECRET": "sgsdev-local-jwt-secret-change-in-prod-32chars"},
             clear=False,
         ):
-            token = crear_token_restablecimiento(ANCLA)
-            res = self.service.restablecer_password(token, "Nueva4567")
+            pin = generar_pin()
+            guardar_pin(ANCLA, pin)
+            res = self.service.restablecer_password(
+                email=ANCLA, pin=pin, nueva_password="Nueva4567"
+            )
             self.assertEqual(res["status"], "ok")
             self.assertEqual(self.repo.buscar_por_email(ANCLA)["password"], "hash:Nueva4567")
-            malo = self.service.restablecer_password(token, "corta1")
+            malo = self.service.restablecer_password(
+                email=ANCLA, pin="000000", nueva_password="corta1"
+            )
             self.assertEqual(malo["status"], "error")
 
     def test_validacion_correo(self):

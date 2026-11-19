@@ -46,7 +46,22 @@ def restablecer_password(
             },
             status_code=400,
         )
-    res = service.restablecer_password(payload.token, payload.nueva_password)
+    usa_pin = bool((payload.email or "").strip() and (payload.pin or "").strip())
+    usa_token = bool((payload.token or "").strip())
+    if not usa_pin and not usa_token:
+        return JSONResponse(
+            content={
+                "status": "error",
+                "message": "Debes ingresar el código de seguridad o un enlace válido",
+            },
+            status_code=400,
+        )
+    res = service.restablecer_password(
+        token=payload.token,
+        nueva_password=payload.nueva_password,
+        email=payload.email,
+        pin=payload.pin,
+    )
     if res and res.get("status") == "ok":
         return res
     return JSONResponse(content=res, status_code=400)

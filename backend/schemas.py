@@ -20,7 +20,9 @@ class OlvidePasswordRequest(BaseModel):
 
 
 class RestablecerPasswordRequest(BaseModel):
-    token: str
+    token: Optional[str] = None
+    email: Optional[str] = None
+    pin: Optional[str] = None
     nueva_password: str
     confirmar_password: str
 
