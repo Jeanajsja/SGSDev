@@ -33,6 +33,9 @@ class FakeReservaRepository:
     def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin, excluir_id=None):
         return self.cruce_salon
 
+    def listar_salones_disponibles(self, fecha, hora_inicio, hora_fin, excluir_id=None):
+        return []
+
     def existe_cruce_docente(self, id_docente, fecha, hora_inicio, hora_fin, excluir_id=None):
         return self.cruce_docente
 
@@ -128,7 +131,7 @@ class TestReservaServiceAuthorization(unittest.TestCase):
             }
         )
         self.assertEqual(result["status"], "error")
-        self.assertIn("traslaparse", result["message"].lower())
+        self.assertIn("ocupado", result["message"].lower())
         self.assertEqual(self.repository.created, [])
 
     def test_rechaza_traslape_de_docente(self):

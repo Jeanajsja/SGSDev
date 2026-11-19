@@ -171,12 +171,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function precargarCatalogos() {
-    // Calienta cache GET en segundo plano (salones/docentes/reservas) para pestañas siguientes
-    Promise.allSettled([
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const peticiones = [
         apiFetch(`${API_URL}/salones`),
-        apiFetch(`${API_URL}/docentes`),
         apiFetch(`${API_URL}/reservas`),
-    ]).catch(() => {});
+    ];
+    // Docente no tiene permiso de /docentes; evita 403 y demoras al arrancar
+    if (parseInt(user.id_rol, 10) === 1 || parseInt(user.id_rol, 10) === 2) {
+        peticiones.push(apiFetch(`${API_URL}/docentes`));
+    }
+    Promise.allSettled(peticiones).catch(() => {});
 }
 
 async function mostrarSeccion(seccion) {
@@ -965,33 +969,72 @@ async function cargarTabla(tipo, requestId = navegacionId) {
     }
 }
 
-async function llenarSelectSalones(selectId, selectedId = null) {
+let _salonDisponibleTimer = null;
+let _salonDisponibleSeq = 0;
+
+function pintarOpcionesSalones(select, salones, selectedId = null, vacioMsg = "No hay salones disponibles en ese horario") {
+    select.innerHTML = '<option value="">Selecciona un salón o laboratorio</option>';
+    if (!salones.length) {
+        select.innerHTML = `<option value="">${vacioMsg}</option>`;
+        return;
+    }
+    salones.forEach((s) => {
+        const option = document.createElement("option");
+        option.value = String(s.id_salon);
+        option.textContent = `${s.nombre} (cupo ${s.capacidad})`;
+        if (selectedId != null && String(selectedId) === String(s.id_salon)) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+}
+
+async function llenarSelectSalonesDisponibles(selectId, selectedId = null) {
     const select = document.getElementById(selectId);
     if (!select) return;
+    const fecha = document.getElementById('m-fecha')?.value || '';
+    const horaInicio = document.getElementById('m-inicio')?.value || '';
+    const horaFin = document.getElementById('m-fin')?.value || '';
+    const excluirId = document.getElementById('m-reserva-id')?.value || null;
+
+    if (!fecha || !horaInicio || !horaFin) {
+        select.innerHTML = '<option value="">Selecciona fecha y horario primero</option>';
+        return;
+    }
+    if (validarDuracionClase(horaInicio, horaFin)) {
+        select.innerHTML = '<option value="">Revisa el horario de la clase</option>';
+        return;
+    }
+
+    const seq = ++_salonDisponibleSeq;
+    select.innerHTML = '<option value="">Buscando salones disponibles...</option>';
     try {
-        const res = await apiFetch(`${API_URL}/salones`);
-        const result = await leerRespuestaApi(res);
-        const salones = (result.data || []).filter(
-            (s) => (s.estado || "").toLowerCase() === "disponible"
-        );
-        salones.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es", { numeric: true }));
-        select.innerHTML = '<option value="">Selecciona un salón o laboratorio</option>';
-        if (!salones.length) {
-            select.innerHTML = '<option value="">No hay salones disponibles</option>';
-            return;
-        }
-        salones.forEach((s) => {
-            const option = document.createElement("option");
-            option.value = String(s.id_salon);
-            option.textContent = `${s.nombre} (cupo ${s.capacidad})`;
-            if (selectedId != null && String(selectedId) === String(s.id_salon)) {
-                option.selected = true;
-            }
-            select.appendChild(option);
+        const params = new URLSearchParams({
+            fecha,
+            hora_inicio: horaInicio,
+            hora_fin: horaFin,
         });
+        if (excluirId) params.set('excluir_id', String(excluirId));
+        const res = await apiFetch(`${API_URL}/reservas/salones-disponibles?${params.toString()}`, {
+            bypassCache: true,
+        });
+        const result = await leerRespuestaApi(res);
+        if (seq !== _salonDisponibleSeq) return;
+        const salones = (result.data || []).slice().sort((a, b) =>
+            String(a.nombre).localeCompare(String(b.nombre), "es", { numeric: true })
+        );
+        pintarOpcionesSalones(select, salones, selectedId);
     } catch (e) {
+        if (seq !== _salonDisponibleSeq) return;
         select.innerHTML = `<option value="">${mensajeSeguroParaUsuario(e.message || "No se pudieron cargar salones")}</option>`;
     }
+}
+
+function programarActualizacionSalonesDisponibles(selectedId = null) {
+    if (_salonDisponibleTimer) clearTimeout(_salonDisponibleTimer);
+    _salonDisponibleTimer = setTimeout(() => {
+        llenarSelectSalonesDisponibles('m-salon', selectedId);
+    }, 180);
 }
 
 async function llenarSelectMaestros(selectId, selectedId = null) {
@@ -1039,6 +1082,7 @@ async function prepararModal(tipo, editData = null) {
 
     if (tipo === 'reserva') {
         document.getElementById('modal-titulo').innerText = editData ? "Editar Reserva" : "Nueva Reserva";
+        const esDocente = parseInt(user.id_rol, 10) === 3;
         campos.innerHTML = `
             ${editData ? '<input type="hidden" id="m-reserva-id">' : ''}
             <div class="space-y-1">
@@ -1058,29 +1102,49 @@ async function prepararModal(tipo, editData = null) {
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Salón / Laboratorio</label>
                 <select id="m-salon" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition bg-white" required>
-                    <option value="">Cargando salones...</option>
+                    <option value="">Selecciona fecha y horario primero</option>
                 </select>
             </div>
-            ${user.id_rol != 3 ? `
+            ${esDocente ? `
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 uppercase">ID clase</label>
+                <input type="number" id="m-clase" placeholder="ID clase" min="1" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required>
+            </div>
+            ` : `
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">Maestro</label>
                 <select id="m-clase" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition bg-white" required>
                     <option value="">Cargando maestros...</option>
                 </select>
             </div>
-            ` : ''}
+            `}
         `;
         if (editData) {
             document.getElementById('m-reserva-id').value = String(editData.id_reserva);
-            document.getElementById('m-fecha').value = editData.fecha;
-            document.getElementById('m-inicio').value = editData.hora_inicio;
-            document.getElementById('m-fin').value = editData.hora_fin;
+            document.getElementById('m-fecha').value = String(editData.fecha || '').substring(0, 10);
+            document.getElementById('m-inicio').value = String(editData.hora_inicio || '').substring(0, 5);
+            document.getElementById('m-fin').value = String(editData.hora_fin || '').substring(0, 5);
+            if (esDocente) {
+                document.getElementById('m-clase').value = String(editData.id_clase || editData.id_docente || user.id_usuario || '');
+            }
         }
+        // Abrir modal de inmediato; datos se cargan en segundo plano
         document.getElementById('modalMaestro').classList.remove('hidden');
         document.getElementById('formMaestro').onsubmit = (e) => enviarFormulario(e, editData ? 'editar_reserva' : 'reserva');
-        await llenarSelectSalones('m-salon', editData ? editData.id_salon : null);
-        if (user.id_rol != 3) {
-            await llenarSelectMaestros('m-clase', editData ? (editData.id_clase || editData.id_docente) : null);
+
+        const refrescar = () => programarActualizacionSalonesDisponibles(editData ? editData.id_salon : null);
+        ['m-fecha', 'm-inicio', 'm-fin'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', refrescar);
+            el.addEventListener('input', refrescar);
+        });
+
+        if (editData?.fecha && editData?.hora_inicio && editData?.hora_fin) {
+            programarActualizacionSalonesDisponibles(editData.id_salon);
+        }
+        if (!esDocente) {
+            llenarSelectMaestros('m-clase', editData ? (editData.id_clase || editData.id_docente) : null);
         }
     } else if (tipo === 'salon') {
         document.getElementById('modal-titulo').innerText = "Registrar Salón";
@@ -1250,12 +1314,13 @@ function validarTraslapeLocal({ fecha, hora_inicio, hora_fin, id_salon, id_clase
         const rIni = minutosDeHora(r.hora_inicio);
         const rFin = minutosDeHora(r.hora_fin);
         if (!(rIni < fin && rFin > ini)) continue;
+        if (Number(r.id_salon) === Number(id_salon)) {
+            return "No es posible realizar la reserva: el salón ya está ocupado en ese horario (las horas no pueden traslaparse)";
+        }
         const idDoc = r.id_clase != null ? r.id_clase : r.id_docente;
         if (Number(idDoc) === Number(id_clase)) {
             return "No es posible realizar la reserva: el docente ya tiene una clase en ese horario (las horas no pueden traslaparse)";
         }
-        // Cualquier clase en ese horario (aunque sea otra sala) bloquea la reserva.
-        return "No es posible realizar la reserva: ya hay una clase en ese horario (las horas no pueden traslaparse)";
     }
     return null;
 }
@@ -1268,7 +1333,7 @@ async function enviarFormulario(e, tipo) {
     let method = 'POST';
     
     if (tipo === 'reserva' || tipo === 'editar_reserva') {
-        const id_clase_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-clase').value;
+        const id_clase_val = document.getElementById('m-clase')?.value;
         const hora_inicio = document.getElementById('m-inicio').value;
         const hora_fin = document.getElementById('m-fin').value;
         const errorClase = validarDuracionClase(hora_inicio, hora_fin);
@@ -1276,17 +1341,23 @@ async function enviarFormulario(e, tipo) {
             alert(errorClase);
             return;
         }
-        if (user.id_rol != 3 && !id_clase_val) {
-            alert("Debes seleccionar un maestro para la reserva");
+        if (!id_clase_val) {
+            alert(user.id_rol == 3
+                ? "Debes indicar el ID clase"
+                : "Debes seleccionar un maestro para la reserva");
             return;
         }
         const fecha = document.getElementById('m-fecha').value;
-        const id_salon = parseInt(document.getElementById('m-salon').value);
+        const id_salon = parseInt(document.getElementById('m-salon').value, 10);
+        if (!Number.isFinite(id_salon) || id_salon <= 0) {
+            alert("Debes seleccionar un salón disponible para ese horario");
+            return;
+        }
         const id_clase = parseInt(id_clase_val, 10);
         if (!Number.isFinite(id_clase) || id_clase <= 0) {
-            alert(user.id_rol != 3
-                ? "Debes seleccionar un maestro para la reserva"
-                : "No se pudo identificar el maestro de la reserva");
+            alert(user.id_rol == 3
+                ? "Debes indicar un ID clase válido"
+                : "Debes seleccionar un maestro para la reserva");
             return;
         }
         const id_reserva = tipo === 'editar_reserva'

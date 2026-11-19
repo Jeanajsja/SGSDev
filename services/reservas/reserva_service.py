@@ -8,8 +8,8 @@ MAX_HORAS_DIA = 8
 MAX_HORAS_SEMANA = 46
 MSG_OPERACION_FALLIDA = "No se pudo completar la operación. Intenta de nuevo."
 MSG_TRASLAPE = (
-    "No es posible realizar la reserva: ya hay una clase en ese horario "
-    "(las horas no pueden traslaparse)"
+    "No es posible realizar la reserva: el salón ya está ocupado "
+    "en ese horario (las horas no pueden traslaparse)"
 )
 MSG_TRASLAPE_DOCENTE = (
     "No es posible realizar la reserva: el docente ya tiene una clase "
@@ -44,6 +44,20 @@ class ReservaService:
                 ]
             _cache.set(cache_key, reservas)
             return {"status": "ok", "data": reservas}
+        except ConnectionError:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        except Exception:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+
+    def listar_salones_disponibles(self, fecha, hora_inicio, hora_fin, excluir_id=None):
+        error_duracion = self._validar_duracion_clase(hora_inicio, hora_fin)
+        if error_duracion:
+            return error_duracion
+        try:
+            data = self._repository.listar_salones_disponibles(
+                fecha, hora_inicio, hora_fin, excluir_id=excluir_id
+            )
+            return {"status": "ok", "data": data}
         except ConnectionError:
             return {"status": "error", "message": MSG_OPERACION_FALLIDA}
         except Exception:

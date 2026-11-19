@@ -40,6 +40,21 @@ def crear_router(service: ReservaService) -> APIRouter:
             return JSONResponse(content={"status": "error", "message": res.get("message")}, status_code=500)
         return {"status": "ok", "data": jsonable_encoder(res.get("data"))}
 
+    @router.get("/reservas/salones-disponibles")
+    def salones_disponibles(
+        fecha: str,
+        hora_inicio: str,
+        hora_fin: str,
+        excluir_id: Optional[int] = None,
+        _principal=Depends(usuario_actual),
+    ):
+        res = service.listar_salones_disponibles(
+            fecha, hora_inicio, hora_fin, excluir_id=excluir_id
+        )
+        if res.get("status") != "ok":
+            return JSONResponse(content=res, status_code=400)
+        return {"status": "ok", "data": jsonable_encoder(res.get("data"))}
+
     @router.post("/reservas")
     def crear(payload: ReservaPayload, principal=Depends(usuario_actual)):
         data = _resolver_id_clase(payload.model_dump(), principal)

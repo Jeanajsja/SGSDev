@@ -28,7 +28,6 @@ class PostgresReservaRepository(IReservaRepository):
             conn.close()
 
     def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin, excluir_id=None):
-        # id_salon se conserva por compatibilidad; el cruce es por fecha/horario (cualquier sala).
         conn = self._connection_factory()
         if conn is None:
             raise ConnectionError("No se pudo completar la operación")
@@ -37,15 +36,42 @@ class PostgresReservaRepository(IReservaRepository):
             cursor.execute(
                 """
                 SELECT id_reserva FROM reserva
-                WHERE fecha = %s
+                WHERE id_salon = %s AND fecha = %s
                   AND estado != 'cancelada'
                   AND hora_inicio < %s AND hora_fin > %s
                   AND (%s IS NULL OR id_reserva <> %s)
                 LIMIT 1
                 """,
-                (fecha, hora_fin, hora_inicio, excluir_id, excluir_id),
+                (id_salon, fecha, hora_fin, hora_inicio, excluir_id, excluir_id),
             )
             return cursor.fetchone() is not None
+        finally:
+            conn.close()
+
+    def listar_salones_disponibles(self, fecha, hora_inicio, hora_fin, excluir_id=None):
+        conn = self._connection_factory()
+        if conn is None:
+            raise ConnectionError("No se pudo completar la operación")
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(
+                """
+                SELECT s.id_salon, s.nombre, s.capacidad, s.estado, s.ubicacion
+                FROM salon s
+                WHERE lower(coalesce(s.estado, '')) = 'disponible'
+                  AND NOT EXISTS (
+                    SELECT 1 FROM reserva r
+                    WHERE r.id_salon = s.id_salon
+                      AND r.fecha = %s
+                      AND r.estado != 'cancelada'
+                      AND r.hora_inicio < %s AND r.hora_fin > %s
+                      AND (%s IS NULL OR r.id_reserva <> %s)
+                  )
+                ORDER BY s.nombre ASC
+                """,
+                (fecha, hora_fin, hora_inicio, excluir_id, excluir_id),
+            )
+            return cursor.fetchall()
         finally:
             conn.close()
 
