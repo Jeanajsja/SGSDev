@@ -12,9 +12,9 @@ class LoginService:
         try:
             user = self._repository.buscar_por_email(email)
         except ConnectionError:
-            return {"status": "error", "message": "No se pudo conectar a la base de datos de Supabase"}
-        except Exception as e:
-            return {"status": "error", "message": f"Error en el servidor: {str(e)}"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        except Exception:
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
 
         if not user or not self._password_verifier.verificar(password, user["password"]):
             return {"status": "error", "message": "Credenciales inválidas"}

@@ -34,7 +34,7 @@ class SalonService:
             self._repository.crear(data["nombre"].strip(), int(data["capacidad"]), data["ubicacion"].strip())
             _cache.invalidate("salones")
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         return {"status": "ok", "message": "Salón registrado exitosamente"}
 
     def actualizar(self, id_salon, data):
@@ -50,7 +50,7 @@ class SalonService:
             )
             _cache.invalidate("salones")
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         if filas > 0:
             return {"status": "ok", "message": "Salón actualizado correctamente"}
         return {"status": "error", "message": "No se encontró el salón para actualizar"}

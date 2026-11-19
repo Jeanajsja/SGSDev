@@ -15,6 +15,16 @@ class UsuarioCreate(BaseModel):
     solicitante_email: Optional[str] = None
 
 
+class OlvidePasswordRequest(BaseModel):
+    email: str
+
+
+class RestablecerPasswordRequest(BaseModel):
+    token: str
+    nueva_password: str
+    confirmar_password: str
+
+
 class SalonPayload(BaseModel):
     nombre: str
     capacidad: int

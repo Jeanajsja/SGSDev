@@ -30,7 +30,7 @@ class DocenteService:
             self._repository.crear(data["nombre"], data["correo"], password_segura)
             _cache.invalidate("docentes")
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al registrar docente: {str(e)}"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        except Exception:
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         return {"status": "ok", "message": "Docente registrado con éxito"}

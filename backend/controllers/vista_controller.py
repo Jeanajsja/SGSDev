@@ -17,6 +17,11 @@ def mostrar_login(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 
+@router.get("/reset-password.html", response_class=HTMLResponse)
+def mostrar_reset_password(request: Request):
+    return templates.TemplateResponse("reset-password.html", {"request": request})
+
+
 @router.get("/index.html", response_class=HTMLResponse)
 def mostrar_dashboard(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})

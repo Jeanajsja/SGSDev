@@ -67,17 +67,19 @@ canvas#reservasChart {
     height: 600px;
     background: #f8fafc;
     border-right: 1px solid #e8eef6;
+    overflow: visible;
 }
 
 .cal-hour-label {
     position: absolute;
     left: 0;
     right: 0;
-    transform: translateY(-50%);
+    z-index: 1;
     padding: 0 8px;
     font-size: 10px;
     font-weight: 800;
     color: #5c6b80;
+    line-height: 1.2;
 }
 
 .cal-day-column {

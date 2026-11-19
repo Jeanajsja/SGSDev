@@ -6,6 +6,15 @@ HORAS_MINIMAS_CANCELACION = 8
 MAX_HORAS_CLASE = 2
 MAX_HORAS_DIA = 8
 MAX_HORAS_SEMANA = 46
+MSG_OPERACION_FALLIDA = "No se pudo completar la operación. Intenta de nuevo."
+MSG_TRASLAPE = (
+    "No es posible realizar la reserva: ya hay una clase en ese horario "
+    "(las horas no pueden traslaparse)"
+)
+MSG_TRASLAPE_DOCENTE = (
+    "No es posible realizar la reserva: el docente ya tiene una clase "
+    "en ese horario (las horas no pueden traslaparse)"
+)
 _cache = TtlCache(ttl_sec=20)
 
 
@@ -35,10 +44,10 @@ class ReservaService:
                 ]
             _cache.set(cache_key, reservas)
             return {"status": "ok", "data": reservas}
-        except ConnectionError as e:
-            return {"status": "error", "message": str(e)}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        except ConnectionError:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        except Exception:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
 
     def crear_reserva(self, data):
         h_ini = data["hora_inicio"]
@@ -59,18 +68,20 @@ class ReservaService:
         if error_carga:
             return error_carga
 
+        error_cruce = self._validar_sin_traslape(
+            data["id_salon"], data["id_docente"], data["fecha"], h_ini, h_fin
+        )
+        if error_cruce:
+            return error_cruce
+
         try:
-            if self._repository.existe_cruce(
-                data["id_salon"], data["fecha"], h_ini, h_fin
-            ):
-                return self._suscribir_a_cola(data["id_salon"], data["id_docente"])
             self._repository.crear(data["fecha"], h_ini, h_fin, data["id_docente"], data["id_salon"])
             _cache.invalidate("reservas")
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al crear reserva: {str(e)}"}
-        return {"status": "ok", "message": "Reserva confirmada en Supabase"}
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        except Exception:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        return {"status": "ok", "message": "Reserva creada con éxito"}
 
     def actualizar_reserva(self, id_reserva, data):
         error_duracion = self._validar_duracion_clase(data["hora_inicio"], data["hora_fin"])
@@ -84,6 +95,17 @@ class ReservaService:
         if error_carga:
             return error_carga
 
+        error_cruce = self._validar_sin_traslape(
+            data["id_salon"],
+            data["id_docente"],
+            data["fecha"],
+            data["hora_inicio"],
+            data["hora_fin"],
+            excluir_id=id_reserva,
+        )
+        if error_cruce:
+            return error_cruce
+
         try:
             actualizadas = self._repository.actualizar(
                 id_reserva,
@@ -95,9 +117,9 @@ class ReservaService:
             )
             _cache.invalidate("reservas")
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al actualizar reserva: {str(e)}"}
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        except Exception:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
         if not actualizadas:
             return {"status": "error", "message": "No se encontró la reserva para actualizar"}
         return {"status": "ok", "message": "Reserva actualizada con éxito"}
@@ -128,19 +150,19 @@ class ReservaService:
             self._repository.promover_siguiente_cola(id_salon)
             _cache.invalidate("reservas")
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-        return {"status": "ok"}
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        except Exception:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        return {"status": "ok", "message": "Reserva cancelada con éxito"}
 
     def _suscribir_a_cola(self, id_salon, id_docente):
         try:
             self._repository.encolar(id_salon, id_docente)
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al ingresar a cola: {str(e)}"}
-        return {"status": "cola", "message": "Añadido a lista de espera FIFO"}
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        except Exception:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
+        return {"status": "cola", "message": "Añadido a lista de espera"}
 
     def _buscar(self, id_reserva):
         for r in self._repository.listar_detalle():
@@ -173,6 +195,22 @@ class ReservaService:
                     f"{MAX_HORAS_CLASE} horas"
                 ),
             }
+        return None
+
+    def _validar_sin_traslape(
+        self, id_salon, id_docente, fecha, hora_inicio, hora_fin, excluir_id=None
+    ):
+        try:
+            if self._repository.existe_cruce(
+                id_salon, fecha, hora_inicio, hora_fin, excluir_id=excluir_id
+            ):
+                return {"status": "error", "message": MSG_TRASLAPE}
+            if self._repository.existe_cruce_docente(
+                id_docente, fecha, hora_inicio, hora_fin, excluir_id=excluir_id
+            ):
+                return {"status": "error", "message": MSG_TRASLAPE_DOCENTE}
+        except ConnectionError:
+            return {"status": "error", "message": MSG_OPERACION_FALLIDA}
         return None
 
     def _validar_carga(self, id_docente, fecha, horas_nuevas, excluir_id=None):

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGS - Acceso al Sistema</title>
-    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -41,7 +41,10 @@
             <input type="email" id="l-email" autocomplete="username" placeholder="Correo electrónico" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
             <input type="password" id="l-pass" autocomplete="current-password" placeholder="Contraseña" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
             <button type="submit" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Entrar al Sistema</button>
-            <p class="text-center text-xs text-ucc-muted">¿No tienes cuenta? <a href="javascript:toggle()" class="text-ucc-azul font-bold underline">Regístrate ahora</a></p>
+            <p class="text-center text-xs text-ucc-muted">
+                <a href="javascript:mostrarVista('reset')" class="text-ucc-azul font-bold underline">Olvidé mi contraseña</a>
+            </p>
+            <p class="text-center text-xs text-ucc-muted">¿No tienes cuenta? <a href="javascript:mostrarVista('register')" class="text-ucc-azul font-bold underline">Regístrate ahora</a></p>
         </form>
 
         <form id="registerForm" class="hidden space-y-4">
@@ -50,19 +53,46 @@
             <input type="password" id="r-pass" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Contraseña (mínimo 12 caracteres)" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl">
             <p class="text-center text-xs text-ucc-muted">El registro público crea cuentas de docente.</p>
             <button type="submit" class="w-full bg-ucc-dorado text-ucc-navy font-bold py-4 rounded-2xl hover:bg-ucc-oro shadow-xl transition transform active:scale-95">Crear Cuenta Nueva</button>
-            <p class="text-center text-xs text-ucc-muted">¿Ya tienes cuenta? <a href="javascript:toggle()" class="text-ucc-azul font-bold underline">Inicia sesión</a></p>
+            <p class="text-center text-xs text-ucc-muted">¿Ya tienes cuenta? <a href="javascript:mostrarVista('login')" class="text-ucc-azul font-bold underline">Inicia sesión</a></p>
+        </form>
+
+        <form id="resetForm" class="hidden space-y-4">
+            <input type="email" id="rp-email" maxlength="255" autocomplete="username" placeholder="Correo de tu cuenta" required class="w-full p-4 bg-ucc-plata border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition">
+            <p class="text-center text-xs text-ucc-muted">Te enviaremos un enlace a tu correo para restablecer la contraseña.</p>
+            <button type="submit" class="w-full bg-ucc-azul text-white font-bold py-4 rounded-2xl hover:bg-ucc-navy shadow-xl transition transform active:scale-95">Enviar enlace</button>
+            <div id="reset-link-box" class="hidden text-center text-xs bg-ucc-plata border border-slate-100 rounded-2xl p-3"></div>
+            <p class="text-center text-xs text-ucc-muted"><a href="javascript:mostrarVista('login')" class="text-ucc-azul font-bold underline">Volver al inicio de sesión</a></p>
         </form>
     </div>
 
     <script>
         const API = window.location.origin + "/api";
 
-        function toggle() {
-            document.getElementById('loginForm').classList.toggle('hidden');
-            document.getElementById('registerForm').classList.toggle('hidden');
-            const isReg = !document.getElementById('registerForm').classList.contains('hidden');
-            document.getElementById('title').innerText = isReg ? "Nueva Cuenta" : "Bienvenido";
-            document.getElementById('subtitle').innerText = isReg ? "Crea tu perfil de docente" : "Universidad Católica de Colombia";
+        function mostrarVista(vista) {
+            const login = document.getElementById('loginForm');
+            const register = document.getElementById('registerForm');
+            const reset = document.getElementById('resetForm');
+            login.classList.add('hidden');
+            register.classList.add('hidden');
+            reset.classList.add('hidden');
+            if (vista === 'register') {
+                register.classList.remove('hidden');
+                document.getElementById('title').innerText = "Nueva Cuenta";
+                document.getElementById('subtitle').innerText = "Crea tu perfil de docente";
+            } else if (vista === 'reset') {
+                reset.classList.remove('hidden');
+                document.getElementById('title').innerText = "Recuperar acceso";
+                document.getElementById('subtitle').innerText = "Te enviaremos un enlace al correo";
+                const box = document.getElementById('reset-link-box');
+                if (box) {
+                    box.classList.add('hidden');
+                    box.innerHTML = '';
+                }
+            } else {
+                login.classList.remove('hidden');
+                document.getElementById('title').innerText = "Bienvenido";
+                document.getElementById('subtitle').innerText = "Universidad Católica de Colombia";
+            }
         }
 
         document.getElementById('loginForm').onsubmit = async (e) => {
@@ -89,38 +119,70 @@
             }
         };
 
-     document.getElementById('registerForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const data = {
-        nombre: document.getElementById('r-nombre').value,
-        email: document.getElementById('r-email').value,
-        password: document.getElementById('r-pass').value,
-        id_rol: 3
-    };
-    try {
-        const res = await fetch(`${API}/usuarios`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                nombre: document.getElementById('r-nombre').value,
+                email: document.getElementById('r-email').value,
+                password: document.getElementById('r-pass').value,
+                id_rol: 3
+            };
+            try {
+                const res = await fetch(`${API}/usuarios`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
 
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            alert("El servidor se está iniciando o no está disponible. Intenta de nuevo en unos segundos.");
-            return;
-        }
+                const contentType = res.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    alert("El servidor se está iniciando o no está disponible. Intenta de nuevo en unos segundos.");
+                    return;
+                }
 
-        const result = await res.json();
-        if (res.ok) {
-            alert(result.message || "Cuenta creada exitosamente.");
-            toggle();
-        } else {
-            alert("Error: " + (result.message || result.detail || "No se pudo crear la cuenta."));
-        }
-    } catch (err) {
-        alert("Error al conectar con el servidor.");
-    }
-};
+                const result = await res.json();
+                if (res.ok) {
+                    alert(result.message || "Cuenta creada exitosamente.");
+                    mostrarVista('login');
+                } else {
+                    alert("Error: " + (result.message || result.detail || "No se pudo crear la cuenta."));
+                }
+            } catch (err) {
+                alert("Error al conectar con el servidor.");
+            }
+        };
+
+        document.getElementById('resetForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('rp-email').value.trim();
+            const box = document.getElementById('reset-link-box');
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            try {
+                const res = await fetch(`${API}/usuarios/olvide-password`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+                const contentType = res.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    alert("El servidor se está iniciando o no está disponible. Intenta de nuevo en unos segundos.");
+                    return;
+                }
+                const result = await res.json();
+                if (res.ok && result.status === 'ok') {
+                    alert(result.message || "Revisa tu correo.");
+                    if (result.reset_link) {
+                        box.classList.remove('hidden');
+                        box.innerHTML = `Enlace de restablecimiento (entorno local):<br><a class="text-ucc-azul font-bold underline break-all" href="${result.reset_link}">Abrir enlace</a>`;
+                    }
+                } else {
+                    alert("Error: " + (result.message || result.detail || "No se pudo enviar el enlace."));
+                }
+            } catch (err) {
+                alert("Error al conectar con el servidor.");
+            }
+        };
 </script>
 </body>
 </html>

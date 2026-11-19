@@ -11,9 +11,21 @@ class MemoryReservaRepository(IReservaRepository):
     def listar_detalle(self):
         return list(self._reservas)
 
-    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin):
+    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin, excluir_id=None):
         for r in self._reservas:
-            if r["id_salon"] != id_salon or r["fecha"] != fecha or r["estado"] == "cancelada":
+            if excluir_id is not None and r["id_reserva"] == excluir_id:
+                continue
+            if r["fecha"] != fecha or r["estado"] == "cancelada":
+                continue
+            if r["hora_inicio"] < hora_fin and r["hora_fin"] > hora_inicio:
+                return True
+        return False
+
+    def existe_cruce_docente(self, id_docente, fecha, hora_inicio, hora_fin, excluir_id=None):
+        for r in self._reservas:
+            if excluir_id is not None and r["id_reserva"] == excluir_id:
+                continue
+            if r["id_docente"] != id_docente or r["fecha"] != fecha or r["estado"] == "cancelada":
                 continue
             if r["hora_inicio"] < hora_fin and r["hora_fin"] > hora_inicio:
                 return True
@@ -30,7 +42,7 @@ class MemoryReservaRepository(IReservaRepository):
                 "id_docente": id_docente,
                 "id_salon": id_salon,
                 "docente": "Docente",
-                "salon": f"Salon {id_salon}",
+                "salon": f"Sala{id_salon}",
             }
         )
         self._next_id += 1

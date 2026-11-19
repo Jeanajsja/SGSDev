@@ -7,7 +7,11 @@ class IReservaRepository(ABC):
         pass
 
     @abstractmethod
-    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin):
+    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin, excluir_id=None):
+        pass
+
+    @abstractmethod
+    def existe_cruce_docente(self, id_docente, fecha, hora_inicio, hora_fin, excluir_id=None):
         pass
 
     @abstractmethod

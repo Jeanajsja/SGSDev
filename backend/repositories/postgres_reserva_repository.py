@@ -9,7 +9,7 @@ class PostgresReservaRepository(IReservaRepository):
     def listar_detalle(self):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
@@ -27,18 +27,44 @@ class PostgresReservaRepository(IReservaRepository):
         finally:
             conn.close()
 
-    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin):
+    def existe_cruce(self, id_salon, fecha, hora_inicio, hora_fin, excluir_id=None):
+        # id_salon se conserva por compatibilidad; el cruce es por fecha/horario (cualquier sala).
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
                 """
-                SELECT * FROM reserva WHERE id_salon = %s AND fecha = %s
-                AND estado != 'cancelada' AND (hora_inicio < %s AND hora_fin > %s)
+                SELECT id_reserva FROM reserva
+                WHERE fecha = %s
+                  AND estado != 'cancelada'
+                  AND hora_inicio < %s AND hora_fin > %s
+                  AND (%s IS NULL OR id_reserva <> %s)
+                LIMIT 1
                 """,
-                (id_salon, fecha, hora_fin, hora_inicio),
+                (fecha, hora_fin, hora_inicio, excluir_id, excluir_id),
+            )
+            return cursor.fetchone() is not None
+        finally:
+            conn.close()
+
+    def existe_cruce_docente(self, id_docente, fecha, hora_inicio, hora_fin, excluir_id=None):
+        conn = self._connection_factory()
+        if conn is None:
+            raise ConnectionError("No se pudo completar la operación")
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(
+                """
+                SELECT id_reserva FROM reserva
+                WHERE id_docente = %s AND fecha = %s
+                  AND estado != 'cancelada'
+                  AND hora_inicio < %s AND hora_fin > %s
+                  AND (%s IS NULL OR id_reserva <> %s)
+                LIMIT 1
+                """,
+                (id_docente, fecha, hora_fin, hora_inicio, excluir_id, excluir_id),
             )
             return cursor.fetchone() is not None
         finally:
@@ -47,7 +73,7 @@ class PostgresReservaRepository(IReservaRepository):
     def crear(self, fecha, hora_inicio, hora_fin, id_docente, id_salon):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -64,7 +90,7 @@ class PostgresReservaRepository(IReservaRepository):
     def actualizar(self, id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_docente):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -83,7 +109,7 @@ class PostgresReservaRepository(IReservaRepository):
     def cancelar(self, id_reserva):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("SELECT id_salon FROM reserva WHERE id_reserva = %s", (id_reserva,))
@@ -99,7 +125,7 @@ class PostgresReservaRepository(IReservaRepository):
     def encolar(self, id_salon, id_docente):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -113,7 +139,7 @@ class PostgresReservaRepository(IReservaRepository):
     def promover_siguiente_cola(self, id_salon):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(

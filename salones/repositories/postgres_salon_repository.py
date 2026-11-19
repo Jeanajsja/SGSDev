@@ -20,7 +20,7 @@ class PostgresSalonRepository(ISalonRepository):
     def crear(self, nombre, capacidad, ubicacion):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -37,7 +37,7 @@ class PostgresSalonRepository(ISalonRepository):
     def actualizar(self, id_salon, nombre, capacidad, ubicacion):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(

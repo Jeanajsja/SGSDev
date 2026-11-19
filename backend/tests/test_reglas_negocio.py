@@ -111,6 +111,61 @@ class TestCancelacionReserva(unittest.TestCase):
         self.assertEqual(self.service.cancelar_reserva(self.id_reserva, ahora=ahora)["status"], "ok")
 
 
+class TestTraslapeHorario(unittest.TestCase):
+    def setUp(self):
+        self.repo = MemoryReservaRepository()
+        self.service = ReservaService(self.repo)
+        self.service.crear_reserva(
+            {
+                "fecha": "2026-09-14",
+                "hora_inicio": "08:00",
+                "hora_fin": "10:00",
+                "id_salon": 1,
+                "id_docente": 2,
+            }
+        )
+
+    def test_rechaza_mismo_salon_misma_hora(self):
+        choque = self.service.crear_reserva(
+            {
+                "fecha": "2026-09-14",
+                "hora_inicio": "09:00",
+                "hora_fin": "11:00",
+                "id_salon": 1,
+                "id_docente": 3,
+            }
+        )
+        self.assertEqual(choque["status"], "error")
+        self.assertIn("ocupado", choque["message"].lower())
+        self.assertEqual(len(self.repo._reservas), 1)
+
+    def test_rechaza_mismo_docente_otra_sala_misma_hora(self):
+        choque = self.service.crear_reserva(
+            {
+                "fecha": "2026-09-14",
+                "hora_inicio": "09:00",
+                "hora_fin": "11:00",
+                "id_salon": 2,
+                "id_docente": 2,
+            }
+        )
+        self.assertEqual(choque["status"], "error")
+        self.assertIn("docente", choque["message"].lower())
+        self.assertEqual(len(self.repo._reservas), 1)
+
+    def test_permite_mismo_horario_otro_salon_otro_docente(self):
+        ok = self.service.crear_reserva(
+            {
+                "fecha": "2026-09-14",
+                "hora_inicio": "08:00",
+                "hora_fin": "10:00",
+                "id_salon": 2,
+                "id_docente": 3,
+            }
+        )
+        self.assertEqual(ok["status"], "ok", ok)
+
+
 class TestCargaDocente(unittest.TestCase):
     def setUp(self):
         self.repo = MemoryReservaRepository()
@@ -194,11 +249,19 @@ class TestPasswordYRegistro(unittest.TestCase):
         self.assertIsNone(validar_password(CLAVE))
 
     def test_restablecer_password(self):
-        res = self.service.restablecer_password(ANCLA, "Nueva4567")
-        self.assertEqual(res["status"], "ok")
-        self.assertEqual(self.repo.buscar_por_email(ANCLA)["password"], "hash:Nueva4567")
-        malo = self.service.restablecer_password(ANCLA, "corta1")
-        self.assertEqual(malo["status"], "error")
+        from services.password_reset import crear_token_restablecimiento
+
+        with patch.dict(
+            "os.environ",
+            {"JWT_SECRET": "sgsdev-local-jwt-secret-change-in-prod-32chars"},
+            clear=False,
+        ):
+            token = crear_token_restablecimiento(ANCLA)
+            res = self.service.restablecer_password(token, "Nueva4567")
+            self.assertEqual(res["status"], "ok")
+            self.assertEqual(self.repo.buscar_por_email(ANCLA)["password"], "hash:Nueva4567")
+            malo = self.service.restablecer_password(token, "corta1")
+            self.assertEqual(malo["status"], "error")
 
     def test_validacion_correo(self):
         self.assertEqual(validar_dominio_email("ana@gmal.com")["status"], "error")

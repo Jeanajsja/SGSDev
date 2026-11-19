@@ -32,7 +32,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def crear(self, nombre, email, password_hash, id_rol, estado="activo"):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             try:
@@ -65,7 +65,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def actualizar_password(self, email, password_hash):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -80,7 +80,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def listar(self):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             try:
@@ -98,7 +98,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def buscar_por_id(self, id_usuario):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             try:
@@ -118,7 +118,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def buscar_por_email(self, email):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             try:
@@ -138,7 +138,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def actualizar_rol(self, id_usuario, id_rol):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             try:
@@ -163,7 +163,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
     def eliminar(self, id_usuario):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM cola_espera WHERE id_docente = %s", (id_usuario,))

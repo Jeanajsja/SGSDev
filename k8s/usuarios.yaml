@@ -27,6 +27,10 @@ spec:
               value: ""
             - name: SUPABASE_KEY
               value: ""
+            - name: APP_BASE_URL
+              value: "http://localhost:8080"
+            - name: RESET_LINK_IN_RESPONSE
+              value: "1"
           readinessProbe:
             httpGet:
               path: /health

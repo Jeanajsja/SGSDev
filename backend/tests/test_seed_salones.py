@@ -9,22 +9,28 @@ class FakeCursor:
         self.existing = set()
         self.inserted = []
         self._last = ""
+        self.rowcount = 0
 
     def execute(self, query, params=None):
         q = " ".join(query.split()).lower()
         self._last = q
+        self.rowcount = 0
         if q.startswith("select"):
             self._params = params
             return
         if q.startswith("insert"):
             self.inserted.append(params[0])
             self.existing.add(params[0].lower())
+            self.rowcount = 1
 
     def fetchone(self):
-        if self._last.startswith("select"):
+        if self._last.startswith("select") and "from salon where lower(nombre)" in self._last:
             nombre = (self._params or [""])[0].lower()
             return (1,) if nombre in self.existing else None
         return None
+
+    def fetchall(self):
+        return []
 
 
 class FakeConnection:
@@ -46,12 +52,13 @@ class FakeConnection:
 
 
 class TestSeedSalones(unittest.TestCase):
-    def test_crea_salon1_a_10_y_lab1_a_10(self):
+    def test_crea_sala1_a_10_y_lab1_a_10(self):
         conn = FakeConnection()
         creados = asegurar_salones_base(lambda: conn)
         self.assertEqual(creados, 20)
         self.assertEqual(set(conn.cursor_instance.inserted), set(SALONES + LABS))
         self.assertTrue(conn.committed)
+        self.assertTrue(all(n.startswith("Sala") for n in SALONES))
 
     def test_no_duplica_si_ya_existen(self):
         conn = FakeConnection()

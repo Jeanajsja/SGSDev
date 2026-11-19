@@ -9,7 +9,7 @@ class PostgresDocenteRepository(IDocenteRepository):
     def listar(self):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(
@@ -27,7 +27,7 @@ class PostgresDocenteRepository(IDocenteRepository):
     def crear(self, nombre, correo, password_hash):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor()
             cursor.execute(

@@ -92,10 +92,7 @@ def _ensure_pool():
                 logger.warning("Pool Supabase falló (intento %s/3): %s", intento, error)
                 time.sleep(0.35 * intento)
         logger.exception("No se pudo crear el pool hacia Supabase")
-        raise ConnectionError(
-            "No se pudo conectar a Supabase; verifica DB_HOST, DB_PORT, "
-            "DB_USER, DB_PASSWORD y DB_SSLMODE"
-        ) from last_error
+        raise ConnectionError("No se pudo completar la operación") from last_error
 
 
 class _PooledConnection:
@@ -147,7 +144,7 @@ def get_connection():
             except (psycopg2.Error, ValueError, OSError) as error:
                 last_error = error
                 time.sleep(0.35 * intento)
-        raise ConnectionError("No se pudo conectar a Supabase") from last_error
+        raise ConnectionError("No se pudo completar la operación") from last_error
 
 
 def warm_connection():

@@ -9,7 +9,7 @@ class PostgresLoginRepository(ILoginRepository):
     def buscar_por_email(self, email):
         conn = self._connection_factory()
         if conn is None:
-            raise ConnectionError("No se pudo conectar a la base de datos de Supabase")
+            raise ConnectionError("No se pudo completar la operación")
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute(

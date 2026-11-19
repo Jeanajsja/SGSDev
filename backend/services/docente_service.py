@@ -25,5 +25,5 @@ class DocenteService:
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
-            return {"status": "error", "message": f"Error al registrar docente: {str(e)}"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         return {"status": "ok", "message": "Docente registrado con éxito"}

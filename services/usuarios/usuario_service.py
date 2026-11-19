@@ -1,8 +1,19 @@
+import logging
+import os
+
+from common.mailer import enviar_correo, smtp_configurado
+from common.password_reset import (
+    construir_enlace_restablecimiento,
+    crear_token_restablecimiento,
+    decodificar_token_restablecimiento,
+)
 from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher
 from interfaces.usuario_repository import IUsuarioRepository
 from password_policy import validar_password
 from superadmin_ancla import ROL_SUPERADMIN, SUPERADMIN_ANCLA
+
+logger = logging.getLogger(__name__)
 
 ROLES_VALIDOS = {1, 2, 3}
 
@@ -46,35 +57,117 @@ class UsuarioService:
             password_segura = self._password_hasher.hash(data["password"])
             self._repository.crear(data["nombre"], data["email"], password_segura, id_rol, estado)
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         except Exception as e:
             mensaje = str(e).lower()
             if "duplicate" in mensaje or "unique" in mensaje:
                 return {"status": "error", "message": "Solo se permite un registro por correo"}
-            return {"status": "error", "message": f"No se pudo crear la cuenta: {str(e)}"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         return {"status": "ok", "message": "Cuenta creada exitosamente", "estado": estado}
 
-    def restablecer_password(self, email, nueva_password):
+    def solicitar_restablecimiento(self, email):
+        """
+        Genera un enlace de restauración y lo envía al correo.
+        Siempre responde genérico para no revelar si la cuenta existe.
+        """
+        correo = (email or "").strip().lower()
+        mensaje_ok = (
+            "Si el correo está registrado, te enviamos un enlace para restablecer "
+            "la contraseña. Revisa tu bandeja de entrada."
+        )
+        if not correo:
+            return {"status": "error", "message": "El correo es obligatorio"}
+
+        usuario = None
+        try:
+            usuario = self._repository.buscar_por_email(correo)
+        except ConnectionError:
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        except Exception:
+            logger.exception("Error buscando usuario para restablecimiento")
+            return {"status": "ok", "message": mensaje_ok}
+
+        if not usuario:
+            return {"status": "ok", "message": mensaje_ok}
+
+        try:
+            token = crear_token_restablecimiento(correo)
+            enlace = construir_enlace_restablecimiento(token)
+        except Exception:
+            logger.exception("No se pudo crear token de restablecimiento")
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+
+        asunto = "Restablece tu contraseña - SGSDev"
+        texto = (
+            "Recibimos una solicitud para restablecer tu contraseña en SGSDev.\n\n"
+            f"Abre este enlace (válido por 30 minutos):\n{enlace}\n\n"
+            "Si no solicitaste este cambio, ignora este mensaje."
+        )
+        html = (
+            "<p>Recibimos una solicitud para restablecer tu contraseña en <strong>SGSDev</strong>.</p>"
+            f'<p><a href="{enlace}">Restablecer contraseña</a></p>'
+            f"<p>O copia este enlace:<br>{enlace}</p>"
+            "<p>El enlace vence en 30 minutos. Si no solicitaste este cambio, ignora este mensaje.</p>"
+        )
+
+        envio = {"ok": False, "message": "SMTP no configurado"}
+        if smtp_configurado():
+            envio = enviar_correo(correo, asunto, texto, html=html)
+        else:
+            logger.warning("SMTP no configurado. Enlace de restablecimiento para %s: %s", correo, enlace)
+
+        respuesta = {"status": "ok", "message": mensaje_ok}
+        # En local/Kind sin SMTP, devolver el enlace para poder completar el flujo
+        exponer = (os.getenv("RESET_LINK_IN_RESPONSE", "1") or "1").strip() not in {
+            "0",
+            "false",
+            "False",
+        }
+        if exponer and (not envio.get("ok")):
+            respuesta["reset_link"] = enlace
+            respuesta["message"] = (
+                "Te generamos un enlace para restablecer la contraseña. "
+                "Ábrelo para continuar."
+            )
+        elif not envio.get("ok") and smtp_configurado():
+            logger.error("Fallo SMTP al restablecer %s: %s", correo, envio.get("message"))
+            return {
+                "status": "error",
+                "message": "No se pudo enviar el correo de restablecimiento. Intenta más tarde.",
+            }
+        return respuesta
+
+    def restablecer_password(self, token, nueva_password):
+        correo = decodificar_token_restablecimiento(token or "")
+        if not correo:
+            return {
+                "status": "error",
+                "message": "El enlace de restablecimiento es inválido o ya expiró",
+            }
         error_clave = validar_password(nueva_password)
         if error_clave:
             return error_clave
-        usuario = self._repository.buscar_por_email(email)
+        usuario = self._repository.buscar_por_email(correo)
         if not usuario:
-            return {"status": "error", "message": "La cuenta no existe"}
+            return {"status": "error", "message": "No hay una cuenta registrada con ese correo"}
         try:
             password_segura = self._password_hasher.hash(nueva_password)
-            self._repository.actualizar_password(email, password_segura)
+            self._repository.actualizar_password(correo, password_segura)
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"No se pudo restablecer la contraseña: {str(e)}"}
-        return {"status": "ok", "message": "Contraseña restablecida"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        except Exception:
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        return {"status": "ok", "message": "Contraseña restablecida. Ya puedes iniciar sesión"}
 
     def listar_usuarios(self):
         try:
             return {"status": "ok", "data": [self._publico(u) for u in self._repository.listar()]}
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión", "data": []}
+            return {
+                "status": "error",
+                "message": "No se pudo completar la operación. Intenta de nuevo.",
+                "data": [],
+            }
 
     def cambiar_rol(self, id_usuario, id_rol, solicitante_email):
         solicitante = self._exigir_superadmin(solicitante_email)
@@ -99,9 +192,9 @@ class UsuarioService:
         try:
             actualizado = self._repository.actualizar_rol(id_usuario, nuevo_rol)
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"No se pudo cambiar el rol: {str(e)}"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        except Exception:
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         if not actualizado:
             return {"status": "error", "message": "La cuenta ya no existe"}
         return {"status": "ok", "message": "Rol actualizado"}
@@ -120,9 +213,9 @@ class UsuarioService:
         try:
             eliminado = self._repository.eliminar(id_usuario)
         except ConnectionError:
-            return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"No se pudo eliminar la cuenta: {str(e)}"}
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
+        except Exception:
+            return {"status": "error", "message": "No se pudo completar la operación. Intenta de nuevo."}
         if not eliminado:
             return {"status": "error", "message": "La cuenta ya no existe"}
         return {"status": "ok", "message": "Cuenta eliminada"}
