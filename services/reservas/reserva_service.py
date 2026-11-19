@@ -131,17 +131,23 @@ class ReservaService:
         if (reserva.get("estado") or "").lower() == "cancelada":
             return {"status": "error", "message": "La reserva ya está cancelada"}
 
-        if principal and principal["id_rol"] == 3:
+        rol = int((principal or {}).get("id_rol") or 0)
+        if rol == 3:
             if reserva.get("id_docente") != principal["id_usuario"]:
                 return {"status": "error", "message": "No puedes cancelar esta reserva"}
 
-        momento = ahora or datetime.now()
-        inicio = self._inicio_reserva(reserva)
-        if inicio - momento < timedelta(hours=HORAS_MINIMAS_CANCELACION):
-            return {
-                "status": "error",
-                "message": f"Solo se puede cancelar con al menos {HORAS_MINIMAS_CANCELACION} horas de anticipación",
-            }
+        # Admin y superadmin pueden cancelar sin la regla de anticipación.
+        if rol not in (1, 2):
+            momento = ahora or datetime.now()
+            inicio = self._inicio_reserva(reserva)
+            if inicio - momento < timedelta(hours=HORAS_MINIMAS_CANCELACION):
+                return {
+                    "status": "error",
+                    "message": (
+                        f"Solo se puede cancelar con al menos "
+                        f"{HORAS_MINIMAS_CANCELACION} horas de anticipación"
+                    ),
+                }
 
         try:
             id_salon = self._repository.cancelar(id_reserva)

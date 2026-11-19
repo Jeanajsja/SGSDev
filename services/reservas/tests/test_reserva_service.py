@@ -6,8 +6,24 @@ from reserva_service import ReservaService
 class FakeReservaRepository:
     def __init__(self):
         self.reservas = [
-            {"id_reserva": 10, "id_docente": 7, "id_salon": 2},
-            {"id_reserva": 11, "id_docente": 8, "id_salon": 3},
+            {
+                "id_reserva": 10,
+                "id_docente": 7,
+                "id_salon": 2,
+                "fecha": "2099-01-15",
+                "hora_inicio": "10:00",
+                "hora_fin": "12:00",
+                "estado": "confirmada",
+            },
+            {
+                "id_reserva": 11,
+                "id_docente": 8,
+                "id_salon": 3,
+                "fecha": "2099-01-15",
+                "hora_inicio": "10:00",
+                "hora_fin": "12:00",
+                "estado": "confirmada",
+            },
         ]
         self.cancelled = []
         self.cruce_salon = False
@@ -64,6 +80,18 @@ class TestReservaServiceAuthorization(unittest.TestCase):
 
     def test_docente_can_cancel_own_reservation(self):
         result = self.service.cancelar_reserva(10, {"id_usuario": 7, "id_rol": 3})
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(self.repository.cancelled, [10])
+
+    def test_admin_can_cancel_any_reservation(self):
+        result = self.service.cancelar_reserva(11, {"id_usuario": 1, "id_rol": 2})
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(self.repository.cancelled, [11])
+
+    def test_superadmin_can_cancel_without_anticipation(self):
+        self.repository.reservas[0]["fecha"] = "2020-01-01"
+        self.repository.reservas[0]["hora_inicio"] = "08:00"
+        result = self.service.cancelar_reserva(10, {"id_usuario": 1, "id_rol": 1})
         self.assertEqual(result["status"], "ok")
         self.assertEqual(self.repository.cancelled, [10])
 
