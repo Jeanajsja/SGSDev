@@ -103,3 +103,10 @@ python -m unittest backend.tests.test_solid -v
 ```
 
 Documentacion de la API: http://localhost:5000/docs
+
+## Exposicion (demo rapida)
+
+1. Entrar en http://localhost:8080 y alternar **Claro/Oscuro**.
+2. Mostrar agenda y rechazo de traslape al reservar el mismo salon/hora.
+3. Abrir Actions/PR en GitHub para evidenciar CI.
+4. Recordar: cola_espera existe; ante traslape se rechaza (no se encola).
