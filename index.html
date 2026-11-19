@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGS - Dashboard</title>
+    <link rel="stylesheet" href="/static/css/styles.css?v=20261119-mobilefix">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ucc: {
+                            navy: '#071833',
+                            azul: '#0e4a8a',
+                            medio: '#1a66b8',
+                            dorado: '#edb309',
+                            oro: '#e8c547',
+                            plata: '#f4f7fb',
+                            texto: '#12213a',
+                            muted: '#5c6b80'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #12213a; }
+        .sidebar-item { transition: all 0.2s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; font-size: 14px; color: #9bb0c9; }
+        .sidebar-item:hover { background-color: #0c274f; color: #ffffff; }
+        .sidebar-active { background-color: #edb309 !important; color: #071833 !important; }
+        .modal-bg { background: rgba(7, 24, 51, 0.65); backdrop-filter: blur(4px); }
+        .restringido { display: none !important; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- OVERLAY OSCURO PARA MÓVIL AL ABRIR EL SIDEBAR -->
+    <div id="sidebar-overlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 hidden md:hidden transition-opacity"></div>
+
+    <!-- SIDEBAR (Controlado por RBAC, modo drawer en móviles) -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-ucc-navy flex flex-col shrink-0 shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:w-64">
+        <div class="h-1.5 bg-ucc-dorado"></div>
+        <div class="p-6 flex items-center justify-between border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="bg-ucc-azul p-2 rounded-xl text-white shadow-lg ring-2 ring-ucc-dorado"><i class="fas fa-university"></i></div>
+                <span class="text-white font-bold text-sm">Sistema de Salones</span>
+            </div>
+            <!-- Botón cerrar menú solo en móvil -->
+            <button type="button" onclick="toggleSidebar(false)" class="md:hidden text-slate-400 hover:text-white p-2 text-lg focus:outline-none" aria-label="Cerrar menú">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <div onclick="mostrarSeccion('dashboard')" id="nav-dashboard" class="sidebar-item sidebar-active">
+                <i class="fas fa-th-large w-5"></i> Dashboard
+            </div>
+            <div onclick="mostrarSeccion('salones')" id="nav-salones" class="sidebar-item">
+                <i class="fas fa-door-open w-5"></i> Gestión de Salones
+            </div>
+            <div onclick="mostrarSeccion('reservas_globales')" id="nav-reservas" class="sidebar-item">
+                <i class="fas fa-calendar-check w-5"></i> Agenda de Salones
+            </div>
+            <div onclick="mostrarSeccion('docentes')" id="nav-docentes" class="sidebar-item">
+                <i class="fas fa-user-graduate w-5"></i> Lista de Docentes
+            </div>
+            <div onclick="mostrarSeccion('roles')" id="nav-roles" class="sidebar-item">
+                <i class="fas fa-users-cog w-5"></i> Control de Roles
+            </div>
+            
+            <div class="pt-6 pb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-ucc-muted border-t border-white/10 mt-6">Cuenta</div>
+            <div onclick="cerrarSesion()" class="sidebar-item text-red-400 hover:bg-red-500/10">
+                <i class="fas fa-sign-out-alt w-5"></i> Cerrar Sesión (US-20)
+            </div>
+        </nav>
+    </aside>
+
+    <!-- ÁREA DE CONTENIDO -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden w-full">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <!-- Botón Hamburguesa Móvil (Visible solo en celulares) -->
+                <button type="button" id="btn-toggle-sidebar" onclick="toggleSidebar(true)" class="md:hidden p-2 rounded-xl text-ucc-navy hover:bg-ucc-plata focus:outline-none transition shrink-0" aria-label="Abrir menú">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <h2 id="titulo-seccion" class="text-base md:text-lg font-bold text-ucc-texto truncate">Panel Principal</h2>
+            </div>
+            <div class="flex items-center gap-2 md:gap-5">
+                <button id="btn-accion-principal" class="bg-ucc-azul hover:bg-ucc-navy text-white text-[11px] md:text-xs font-bold py-2 md:py-2.5 px-3 md:px-5 rounded-xl shadow-lg transition flex items-center gap-1.5 md:gap-2 shrink-0 whitespace-nowrap">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">NUEVA ACCIÓN</span><span class="sm:hidden">ACCIÓN</span>
+                </button>
+                <div class="flex items-center gap-2 md:gap-3 pl-2 md:pl-5 border-l border-slate-200 text-right">
+                    <div>
+                        <p id="user-display-name" class="text-xs md:text-sm font-bold text-ucc-texto leading-tight truncate max-w-[90px] sm:max-w-[150px]">--</p>
+                        <p id="user-display-role" class="text-[9px] md:text-[10px] text-slate-400 uppercase font-black">ROL</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
+            <!-- Estadísticas US-22 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6" id="seccion-stats">
+                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <p class="text-ucc-muted text-xs font-bold uppercase tracking-widest mb-1">Registros en Sección</p>
+                    <h3 id="stat-reservas" class="text-3xl font-black text-ucc-texto">--</h3>
+                </div>
+                <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <p class="text-ucc-muted text-xs font-bold uppercase tracking-widest mb-1">Estado</p>
+                    <h3 class="text-ucc-azul font-bold flex items-center gap-2 text-sm"><span class="w-2 h-2 bg-ucc-dorado rounded-full animate-pulse"></span> Sistema en línea</h3>
+                </div>
+            </div>
+
+            <!-- Agenda tipo calendario Teams (día / semana / mes) -->
+            <section id="seccion-agenda" class="hidden space-y-4">
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Calendario de reservas</p>
+                        <h4 id="agenda-fecha-label" class="text-lg font-black text-ucc-texto">Hoy</h4>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex rounded-xl border border-slate-200 overflow-hidden" role="group" aria-label="Vista del calendario">
+                            <button type="button" id="agenda-vista-dia" onclick="cambiarVistaAgenda('dia')" class="agenda-view-btn px-3 py-2 text-xs font-black uppercase tracking-wide">Día</button>
+                            <button type="button" id="agenda-vista-semana" onclick="cambiarVistaAgenda('semana')" class="agenda-view-btn px-3 py-2 text-xs font-black uppercase tracking-wide border-l border-slate-200">Semana</button>
+                            <button type="button" id="agenda-vista-mes" onclick="cambiarVistaAgenda('mes')" class="agenda-view-btn px-3 py-2 text-xs font-black uppercase tracking-wide border-l border-slate-200">Mes</button>
+                        </div>
+                        <button type="button" onclick="cambiarPeriodoAgenda(-1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Periodo anterior">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <label class="flex items-center gap-2 text-sm font-bold text-ucc-texto">
+                            <i class="fas fa-calendar-day text-ucc-azul"></i>
+                            <input type="date" id="agenda-fecha" class="border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-ucc-dorado bg-white" onchange="cargarAgendaSalones()">
+                        </label>
+                        <button type="button" onclick="irAgendaHoy()" class="px-4 py-2 rounded-xl bg-ucc-azul text-white text-xs font-black uppercase tracking-wide hover:bg-ucc-navy transition">Hoy</button>
+                        <button type="button" onclick="cambiarPeriodoAgenda(1)" class="px-3 py-2 rounded-xl border border-slate-200 text-ucc-azul hover:bg-ucc-plata transition" aria-label="Periodo siguiente">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" onclick="cargarAgendaSalones(navegacionId, true)" class="p-2 text-ucc-azul hover:bg-ucc-plata rounded-lg transition" aria-label="Actualizar agenda">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="agenda-board" class="agenda-board overflow-auto rounded-3xl border border-slate-200 bg-white shadow-sm"></div>
+            </section>
+
+            <!-- Tabla Maestra (Cubre todas las consultas del PDF) -->
+            <div id="seccion-tabla" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b flex justify-between items-center bg-white">
+                    <h4 id="tabla-titulo" class="text-xs font-black text-slate-400 uppercase tracking-widest">Listado de Datos</h4>
+                    <button onclick="recargarSeccionActual()" class="p-2 text-ucc-azul hover:bg-ucc-plata rounded-lg transition"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead id="tabla-head" class="bg-slate-50/50 text-[10px] uppercase text-slate-400 font-black tracking-widest"></thead>
+                        <tbody id="tabla-body" class="text-sm divide-y divide-slate-50">
+                            <tr><td colspan="5" class="p-20 text-center text-slate-300 italic">Conectando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gráfico US-21 (Oculto para Docentes) -->
+            <div id="seccion-grafico" class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                <h4 class="text-xs font-black text-slate-400 uppercase mb-8 tracking-widest">Estadísticas de Uso</h4>
+                <div class="h-[250px]"><canvas id="reservasChart"></canvas></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL MAESTRO DINÁMICO (Para crear cualquier registro) -->
+    <div id="modalMaestro" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-[2rem] w-full max-w-md shadow-2xl">
+            <h3 id="modal-titulo" class="text-xl font-black text-ucc-texto tracking-tight mb-6">Formulario</h3>
+            <form id="formMaestro" class="space-y-4">
+                <div id="campos-dinamicos" class="space-y-4">
+                    <!-- JS inyectará campos aquí -->
+                </div>
+                <div class="flex flex-col gap-3 pt-8">
+                    <button type="submit" class="w-full py-4 bg-ucc-azul text-white rounded-2xl font-black text-sm hover:bg-ucc-navy transition">GUARDAR CAMBIOS</button>
+                    <button type="button" onclick="cerrarModal()" class="w-full py-2 text-slate-400 font-bold text-xs hover:text-slate-600 transition">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js?v=20261119-mobilefix"></script>
+</body>
+</html>
