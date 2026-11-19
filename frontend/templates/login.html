@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGS - Acceso al Sistema</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <script>
+        (function () {
+            const t = localStorage.getItem('sgs-theme');
+            document.documentElement.setAttribute('data-theme', (t === 'dark' || t === 'light') ? t : 'light');
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/css/styles.css?v=20261119-theme">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -26,11 +32,29 @@
             }
         }
     </script>
-    <style>.hidden { display: none !important; }</style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .hidden { display: none !important; }
+        html[data-theme="dark"] .login-card {
+            background: #111827 !important;
+            color: #e2e8f0;
+        }
+        html[data-theme="dark"] .login-card input {
+            background: #1e293b !important;
+            color: #e2e8f0;
+            border-color: #1f2a3d !important;
+        }
+        html[data-theme="dark"] .login-card .text-ucc-texto { color: #e2e8f0 !important; }
+        html[data-theme="dark"] .login-card .text-ucc-muted { color: #94a3b8 !important; }
+    </style>
 </head>
-<body class="h-screen flex items-center justify-center font-sans" style="background: linear-gradient(160deg, #071833 0%, #0c274f 55%, #0e4a8a 100%);">
+<body class="h-screen flex items-center justify-center font-sans px-4" style="background: linear-gradient(160deg, #071833 0%, #0c274f 55%, #0e4a8a 100%);">
     <div class="absolute top-0 left-0 right-0 h-1.5 bg-ucc-dorado"></div>
-    <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-[400px] border-t-4 border-ucc-dorado">
+    <button type="button" id="theme-toggle" class="theme-toggle-btn absolute top-5 right-5 z-10 bg-white/95">
+        <i class="fas fa-moon"></i>
+        <span class="theme-label">Oscuro</span>
+    </button>
+    <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-[400px] border-t-4 border-ucc-dorado login-card">
         <div class="text-center mb-8">
             <div class="bg-ucc-azul w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-bold shadow-lg ring-2 ring-ucc-dorado">SGS</div>
             <h1 id="title" class="text-3xl font-black text-ucc-texto tracking-tighter">Bienvenido</h1>
@@ -74,6 +98,7 @@
         </form>
     </div>
 
+    <script src="/static/js/theme.js?v=20261119-theme"></script>
     <script>
         const API = window.location.origin + "/api";
         let resetEmailPendiente = "";

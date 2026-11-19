@@ -1452,6 +1452,25 @@ function cerrarModal() { document.getElementById('modalMaestro').classList.add('
 function cerrarSesion() { sessionStorage.clear(); window.location.href = 'login.html'; }
 function recargarSeccionActual() { mostrarSeccion(seccionActual); }
 
+function abrirSidebarMovil() {
+    document.body.classList.add('sidebar-open');
+}
+
+function cerrarSidebarMovil() {
+    document.body.classList.remove('sidebar-open');
+}
+
+document.addEventListener('click', (event) => {
+    const item = event.target.closest('.sidebar-item');
+    if (item && window.matchMedia('(max-width: 900px)').matches) {
+        cerrarSidebarMovil();
+    }
+});
+
+window.addEventListener('sgs-theme-change', () => {
+    if (chartInstance) initChart();
+});
+
 async function initChart() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (user.id_rol == 3) return; // Docente no tiene permisos del gráfico
@@ -1510,13 +1529,13 @@ async function initChart() {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#5c6b80', font: { weight: 'bold' } }
+                        ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--ucc-muted').trim() || '#5c6b80', font: { weight: 'bold' } }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#e8eef6' },
+                        grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--cal-line').trim() || '#e8eef6' },
                         ticks: { 
-                            color: '#5c6b80', 
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--ucc-muted').trim() || '#5c6b80', 
                             stepSize: 1,
                             font: { weight: 'bold' }
                         }

@@ -74,6 +74,21 @@ Aplica el esquema con `supabase db push` antes de usar la aplicación.
 
 Los controladores no hablan con la base de datos. Por eso se puede probar sin internet.
 
+## Responsables
+
+| Persona | Enfoque principal |
+|---------|-------------------|
+| Luisa Páez (`LuisaPaez27`) | Frontend, UX, reservas, restablecimiento, despliegue Kind |
+| Jose000-blip | Backend / microservicios y repositorio base |
+| Jeanajsja | Integración del repositorio y revisión remota |
+| jdsabogal13 | Aportes puntuales al proyecto |
+
+## Cola de espera
+
+Existe la tabla `cola_espera` y la promoción al cancelar una reserva. Ante traslape
+el sistema **rechaza** la nueva reserva (no encola automáticamente) para evitar
+conflictos de agenda.
+
 Para correrlo:
 
 ```

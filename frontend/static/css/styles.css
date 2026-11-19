@@ -1,4 +1,5 @@
-:root {
+:root,
+html[data-theme="light"] {
     --ucc-navy: #071833;
     --ucc-navy-2: #0c274f;
     --ucc-azul: #0e4a8a;
@@ -9,6 +10,110 @@
     --ucc-plata: #f4f7fb;
     --ucc-texto: #12213a;
     --ucc-muted: #5c6b80;
+    --app-bg: #f4f7fb;
+    --app-surface: #ffffff;
+    --app-surface-2: #f8fafc;
+    --app-border: #e2e8f0;
+    --app-header: #ffffff;
+    --app-shadow: rgba(7, 24, 51, 0.12);
+    --cal-line: #eef2f7;
+    --cal-track: #f8fafc;
+    --sidebar-text: #9bb0c9;
+    --sidebar-hover: #0c274f;
+}
+
+html[data-theme="dark"] {
+    --ucc-navy: #07101f;
+    --ucc-navy-2: #0b1a33;
+    --ucc-azul: #3b82f6;
+    --ucc-azul-medio: #60a5fa;
+    --ucc-dorado: #edb309;
+    --ucc-oro: #f0c94a;
+    --ucc-blanco: #0f172a;
+    --ucc-plata: #1e293b;
+    --ucc-texto: #e2e8f0;
+    --ucc-muted: #94a3b8;
+    --app-bg: #0b1220;
+    --app-surface: #111827;
+    --app-surface-2: #0f172a;
+    --app-border: #1f2a3d;
+    --app-header: #0f172a;
+    --app-shadow: rgba(0, 0, 0, 0.35);
+    --cal-line: #1f2a3d;
+    --cal-track: #0f172a;
+    --sidebar-text: #9bb0c9;
+    --sidebar-hover: #13233f;
+}
+
+body {
+    background-color: var(--app-bg);
+    color: var(--ucc-texto);
+}
+
+.app-shell-main {
+    background: var(--app-bg);
+}
+
+.app-header {
+    background: var(--app-header) !important;
+    border-color: var(--app-border) !important;
+}
+
+.app-card,
+.app-panel,
+.agenda-board,
+#seccion-tabla,
+#seccion-grafico,
+#seccion-agenda > .bg-white,
+#modalMaestro > div {
+    background: var(--app-surface) !important;
+    border-color: var(--app-border) !important;
+    color: var(--ucc-texto);
+}
+
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    color: var(--ucc-texto);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--ucc-plata);
+    border-color: var(--ucc-azul);
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    #app-sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 40;
+        transform: translateX(-105%);
+        transition: transform 0.2s ease;
+    }
+
+    body.sidebar-open #app-sidebar {
+        transform: translateX(0);
+    }
+
+    body.sidebar-open .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        background: rgba(7, 24, 51, 0.45);
+    }
 }
 
 .sidebar-item {
@@ -29,13 +134,13 @@ canvas#reservasChart {
 }
 
 .agenda-view-btn {
-    background: #fff;
-    color: #5c6b80;
+    background: var(--app-surface);
+    color: var(--ucc-muted);
 }
 
 .agenda-view-btn:hover {
-    background: #f4f7fb;
-    color: #0e4a8a;
+    background: var(--ucc-plata);
+    color: var(--ucc-azul);
 }
 
 .agenda-view-btn-active {
@@ -47,14 +152,14 @@ canvas#reservasChart {
     min-height: 640px;
     max-height: calc(100vh - 220px);
     overflow: auto;
-    background: #fff;
+    background: var(--app-surface);
 }
 
 .cal-time-view,
 .cal-week-view {
     display: grid;
     min-height: 640px;
-    background: #fff;
+    background: var(--app-surface);
 }
 
 .cal-time-view {
@@ -65,8 +170,8 @@ canvas#reservasChart {
 .cal-week-hours {
     position: relative;
     height: 640px;
-    background: #f8fafc;
-    border-right: 1px solid #e8eef6;
+    background: var(--cal-track);
+    border-right: 1px solid var(--app-border);
     overflow: visible;
 }
 
@@ -78,7 +183,7 @@ canvas#reservasChart {
     padding: 0 8px;
     font-size: 10px;
     font-weight: 800;
-    color: #5c6b80;
+    color: var(--ucc-muted);
     line-height: 1.2;
 }
 
@@ -127,14 +232,14 @@ canvas#reservasChart {
 .cal-week-hours {
     position: relative;
     height: 640px;
-    border-left: 1px solid #e8eef6;
+    border-left: 1px solid var(--app-border);
 }
 
 .cal-hour-line {
     position: absolute;
     left: 0;
     right: 0;
-    border-top: 1px solid #eef2f7;
+    border-top: 1px solid var(--cal-line);
 }
 
 .cal-today,
@@ -231,9 +336,9 @@ canvas#reservasChart {
 
 .cal-month-cell {
     min-height: 110px;
-    border: 1px solid #e8eef6;
+    border: 1px solid var(--app-border);
     border-radius: 14px;
-    background: #fff;
+    background: var(--app-surface);
     padding: 8px;
     text-align: left;
     cursor: pointer;
@@ -241,19 +346,19 @@ canvas#reservasChart {
 }
 
 .cal-month-cell:hover {
-    background: #f8fafc;
-    border-color: #c9d7ea;
+    background: var(--app-surface-2);
+    border-color: var(--ucc-azul);
 }
 
 .cal-month-muted {
-    background: #f8fafc;
+    background: var(--app-surface-2);
     opacity: 0.72;
 }
 
 .cal-month-num {
     font-size: 12px;
     font-weight: 800;
-    color: #12213a;
+    color: var(--ucc-texto);
     margin-bottom: 6px;
 }
 

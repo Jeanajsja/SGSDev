@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGS - Dashboard</title>
-    <link rel="stylesheet" href="/static/css/styles.css?v=20261119-salonlib">
+    <script>
+        (function () {
+            const t = localStorage.getItem('sgs-theme');
+            document.documentElement.setAttribute('data-theme', (t === 'dark' || t === 'light') ? t : 'light');
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/css/styles.css?v=20261119-theme">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -30,23 +36,39 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #12213a; }
-        .sidebar-item { transition: all 0.2s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; font-size: 14px; color: #9bb0c9; }
-        .sidebar-item:hover { background-color: #0c274f; color: #ffffff; }
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; font-size: 14px; color: var(--sidebar-text); }
+        .sidebar-item:hover { background-color: var(--sidebar-hover); color: #ffffff; }
         .sidebar-active { background-color: #edb309 !important; color: #071833 !important; }
         .modal-bg { background: rgba(7, 24, 51, 0.65); backdrop-filter: blur(4px); }
         .restringido { display: none !important; }
         .hidden { display: none !important; }
+        html[data-theme="dark"] .text-ucc-texto { color: var(--ucc-texto) !important; }
+        html[data-theme="dark"] .text-ucc-muted,
+        html[data-theme="dark"] .text-slate-400,
+        html[data-theme="dark"] .text-slate-300 { color: var(--ucc-muted) !important; }
+        html[data-theme="dark"] .border-slate-100,
+        html[data-theme="dark"] .border-slate-200,
+        html[data-theme="dark"] .divide-slate-50 > :not([hidden]) ~ :not([hidden]) { border-color: var(--app-border) !important; }
+        html[data-theme="dark"] .bg-slate-50\/50,
+        html[data-theme="dark"] .bg-white { background-color: var(--app-surface) !important; }
+        html[data-theme="dark"] .hover\:bg-ucc-plata:hover { background-color: var(--ucc-plata) !important; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
+    <div class="sidebar-backdrop" onclick="cerrarSidebarMovil()"></div>
 
     <!-- SIDEBAR (Controlado por RBAC) -->
-    <aside class="w-64 bg-ucc-navy flex flex-col shrink-0 shadow-2xl">
+    <aside id="app-sidebar" class="w-64 bg-ucc-navy flex flex-col shrink-0 shadow-2xl">
         <div class="h-1.5 bg-ucc-dorado"></div>
-        <div class="p-6 flex items-center gap-3 border-b border-white/10">
-            <div class="bg-ucc-azul p-2 rounded-xl text-white shadow-lg ring-2 ring-ucc-dorado"><i class="fas fa-university"></i></div>
-            <span class="text-white font-bold text-sm">Sistema de Salones</span>
+        <div class="p-6 flex items-center justify-between gap-3 border-b border-white/10">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="bg-ucc-azul p-2 rounded-xl text-white shadow-lg ring-2 ring-ucc-dorado"><i class="fas fa-university"></i></div>
+                <span class="text-white font-bold text-sm truncate">Sistema de Salones</span>
+            </div>
+            <button type="button" class="md:hidden text-white/80 p-2" onclick="cerrarSidebarMovil()" aria-label="Cerrar menú">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
             <div onclick="mostrarSeccion('dashboard')" id="nav-dashboard" class="sidebar-item sidebar-active">
@@ -73,14 +95,23 @@
     </aside>
 
     <!-- ÁREA DE CONTENIDO -->
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
-            <h2 id="titulo-seccion" class="text-lg font-bold text-ucc-texto">Panel Principal</h2>
-            <div class="flex items-center gap-5">
-                <button id="btn-accion-principal" class="bg-ucc-azul hover:bg-ucc-navy text-white text-xs font-bold py-2.5 px-5 rounded-xl shadow-lg transition flex items-center gap-2">
-                    <i class="fas fa-plus"></i> NUEVA ACCIÓN
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden app-shell-main">
+        <header class="h-16 app-header border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <button type="button" id="btn-menu-movil" class="md:hidden theme-toggle-btn px-3" onclick="abrirSidebarMovil()" aria-label="Abrir menú">
+                    <i class="fas fa-bars"></i>
                 </button>
-                <div class="flex items-center gap-3 pl-5 border-l border-slate-200 text-right">
+                <h2 id="titulo-seccion" class="text-lg font-bold text-ucc-texto truncate">Panel Principal</h2>
+            </div>
+            <div class="flex items-center gap-3 md:gap-5">
+                <button type="button" id="theme-toggle" class="theme-toggle-btn" aria-label="Cambiar tema">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label hidden sm:inline">Oscuro</span>
+                </button>
+                <button id="btn-accion-principal" class="bg-ucc-azul hover:bg-ucc-navy text-white text-xs font-bold py-2.5 px-4 md:px-5 rounded-xl shadow-lg transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">NUEVA ACCIÓN</span>
+                </button>
+                <div class="flex items-center gap-3 pl-3 md:pl-5 border-l border-slate-200 text-right">
                     <div>
                         <p id="user-display-name" class="text-sm font-bold text-ucc-texto leading-tight">--</p>
                         <p id="user-display-role" class="text-[10px] text-slate-400 uppercase font-black">ROL</p>
@@ -89,7 +120,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-8 space-y-8">
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
             <!-- Estadísticas US-22 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="seccion-stats">
                 <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -174,6 +205,7 @@
         </div>
     </div>
 
-    <script src="/static/js/dashboard.js?v=20261119-salonlib"></script>
+    <script src="/static/js/theme.js?v=20261119-theme"></script>
+    <script src="/static/js/dashboard.js?v=20261119-theme"></script>
 </body>
 </html>
