@@ -183,7 +183,26 @@ function precargarCatalogos() {
     Promise.allSettled(peticiones).catch(() => {});
 }
 
+function toggleSidebar(forzar) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (!sidebar) return;
+    const isHidden = sidebar.classList.contains('-translate-x-full');
+    const abrir = forzar !== undefined ? Boolean(forzar) : isHidden;
+    if (abrir) {
+        sidebar.classList.remove('-translate-x-full');
+        if (overlay) overlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        if (overlay) overlay.classList.add('hidden');
+    }
+}
+window.toggleSidebar = toggleSidebar;
+
 async function mostrarSeccion(seccion) {
+    if (window.innerWidth < 768) {
+        toggleSidebar(false);
+    }
     const requestId = ++navegacionId;
     seccionActual = seccion;
     const user = JSON.parse(sessionStorage.getItem('user'));
@@ -1026,7 +1045,11 @@ async function llenarSelectSalonesDisponibles(selectId, selectedId = null) {
         pintarOpcionesSalones(select, salones, selectedId);
     } catch (e) {
         if (seq !== _salonDisponibleSeq) return;
-        select.innerHTML = `<option value="">${mensajeSeguroParaUsuario(e.message || "No se pudieron cargar salones")}</option>`;
+        if (agendaCache.salones && agendaCache.salones.length > 0) {
+            pintarOpcionesSalones(select, agendaCache.salones, selectedId, "Selecciona un salón");
+        } else {
+            select.innerHTML = `<option value="">${mensajeSeguroParaUsuario(e.message || "No se pudieron cargar salones")}</option>`;
+        }
     }
 }
 
@@ -1449,27 +1472,12 @@ async function cancelarReserva(id) {
 }
 
 function cerrarModal() { document.getElementById('modalMaestro').classList.add('hidden'); }
-function cerrarSesion() { sessionStorage.clear(); window.location.href = 'login.html'; }
+function cerrarSesion() {
+    if (window.innerWidth < 768) toggleSidebar(false);
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+}
 function recargarSeccionActual() { mostrarSeccion(seccionActual); }
-
-function abrirSidebarMovil() {
-    document.body.classList.add('sidebar-open');
-}
-
-function cerrarSidebarMovil() {
-    document.body.classList.remove('sidebar-open');
-}
-
-document.addEventListener('click', (event) => {
-    const item = event.target.closest('.sidebar-item');
-    if (item && window.matchMedia('(max-width: 900px)').matches) {
-        cerrarSidebarMovil();
-    }
-});
-
-window.addEventListener('sgs-theme-change', () => {
-    if (chartInstance) initChart();
-});
 
 async function initChart() {
     const user = JSON.parse(sessionStorage.getItem('user'));
@@ -1529,13 +1537,13 @@ async function initChart() {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--ucc-muted').trim() || '#5c6b80', font: { weight: 'bold' } }
+                        ticks: { color: '#5c6b80', font: { weight: 'bold' } }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--cal-line').trim() || '#e8eef6' },
+                        grid: { color: '#e8eef6' },
                         ticks: { 
-                            color: getComputedStyle(document.documentElement).getPropertyValue('--ucc-muted').trim() || '#5c6b80', 
+                            color: '#5c6b80', 
                             stepSize: 1,
                             font: { weight: 'bold' }
                         }
