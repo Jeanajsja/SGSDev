@@ -1045,7 +1045,11 @@ async function llenarSelectSalonesDisponibles(selectId, selectedId = null) {
         pintarOpcionesSalones(select, salones, selectedId);
     } catch (e) {
         if (seq !== _salonDisponibleSeq) return;
-        select.innerHTML = `<option value="">${mensajeSeguroParaUsuario(e.message || "No se pudieron cargar salones")}</option>`;
+        if (agendaCache.salones && agendaCache.salones.length > 0) {
+            pintarOpcionesSalones(select, agendaCache.salones, selectedId, "Selecciona un salón");
+        } else {
+            select.innerHTML = `<option value="">${mensajeSeguroParaUsuario(e.message || "No se pudieron cargar salones")}</option>`;
+        }
     }
 }
 
